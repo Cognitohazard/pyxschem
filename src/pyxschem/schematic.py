@@ -14,8 +14,10 @@ from pyxschem.model import Component, Element, Header, Net, Text
 from pyxschem.parser import parse_schematic, serialize_schematic
 
 if TYPE_CHECKING:
+    from pyxschem.diff import SchemDiff
     from pyxschem.hierarchy import HierarchyNode
     from pyxschem.library import SymbolLibrary
+    from pyxschem.validate import ValidationResult
 
 
 class Schematic:
@@ -260,6 +262,34 @@ class Schematic:
         """Flatten hierarchy into all leaf (primitive) components."""
         from pyxschem.hierarchy import flatten
         return flatten(self, libs)
+
+    # -- Diffing --
+
+    def diff(self, other: Schematic) -> SchemDiff:
+        """Compare this schematic to another and return differences.
+
+        Args:
+            other: The schematic to compare against.
+
+        Returns:
+            A SchemDiff describing all changes.
+        """
+        from pyxschem.diff import diff_schematics
+        return diff_schematics(self, other)
+
+    # -- Validation --
+
+    def validate(self, libs: SymbolLibrary | None = None) -> ValidationResult:
+        """Run validation checks on this schematic.
+
+        Args:
+            libs: Optional symbol library for pin-level checks.
+
+        Returns:
+            ValidationResult with all found issues.
+        """
+        from pyxschem.validate import validate as _validate
+        return _validate(self, libs=libs)
 
     # -- I/O --
 
