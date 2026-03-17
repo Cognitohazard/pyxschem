@@ -37,6 +37,9 @@ packages = ["src/pyxschem"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "integration: tests requiring xschem installed on the system",
+]
 
 [tool.ruff]
 src = ["src"]

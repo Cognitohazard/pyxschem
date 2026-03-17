@@ -7,8 +7,9 @@ import pytest
 
 from pyxschem import XschemCLI
 
+from conftest import HAS_XSCHEM
+
 FIXTURES = Path(__file__).parent / "fixtures"
-HAS_XSCHEM = shutil.which("xschem") is not None
 
 pytestmark = pytest.mark.skipif(not HAS_XSCHEM, reason="xschem not installed")
 

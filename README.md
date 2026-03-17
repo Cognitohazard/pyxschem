@@ -1,5 +1,7 @@
 # pyxschem
 
+> **WIP** — This project is under active development. APIs may change without notice. Not yet recommended for production use.
+
 Python library for reading, editing, and generating [xschem](https://xschem.sourceforge.io/) schematic (`.sch`) and symbol (`.sym`) files. Pure Python, zero runtime dependencies, round-trip faithful.
 
 ## Installation
