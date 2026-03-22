@@ -6,7 +6,7 @@ Python library for reading, editing, and generating [xschem](https://xschem.sour
 
 ## Installation
 
-```
+```bash
 pip install pyxschem
 ```
 
