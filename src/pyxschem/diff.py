@@ -135,9 +135,7 @@ def diff_schematics(old: Schematic, new: Schematic) -> SchemDiff:
         on = old_nets[key]
         nn = new_nets[key]
         if on.attributes != nn.attributes:
-            result.net_changes.append(
-                NetChange(kind="modified", old=on, new=nn)
-            )
+            result.net_changes.append(NetChange(kind="modified", old=on, new=nn))
 
     # --- Texts ---
     old_texts = {t.text: t for t in old.texts}
