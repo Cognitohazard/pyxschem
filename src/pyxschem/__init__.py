@@ -12,32 +12,32 @@ from pyxschem.diff import (
     diff_schematics,
 )
 from pyxschem.hierarchy import HierarchyNode
+from pyxschem.library import SymbolLibrary, XschemConfig
 from pyxschem.model import Component, Header, Net, Text
 from pyxschem.schematic import Schematic
-from pyxschem.library import SymbolLibrary, XschemConfig
 from pyxschem.symbol import Pin, Symbol
 from pyxschem.validate import ValidationIssue, ValidationResult, validate
 
 __all__ = [
-    "XschemCLI",
+    "Component",
+    "ComponentChange",
+    "Header",
     "HierarchyNode",
+    "Net",
+    "NetChange",
+    "Pin",
+    "SchemDiff",
     "Schematic",
     "Symbol",
     "SymbolLibrary",
-    "XschemConfig",
-    "Pin",
-    "Component",
-    "Net",
     "Text",
-    "Header",
+    "TextChange",
+    "ValidationIssue",
+    "ValidationResult",
+    "XschemCLI",
+    "XschemConfig",
+    "diff_schematics",
     "parse_attributes",
     "serialize_attributes",
-    "diff_schematics",
-    "SchemDiff",
-    "ComponentChange",
-    "NetChange",
-    "TextChange",
     "validate",
-    "ValidationResult",
-    "ValidationIssue",
 ]

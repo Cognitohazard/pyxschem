@@ -89,10 +89,12 @@ class TestUnconnectedPins:
         # Pin at local (0, 0) → schematic (100, 200)
         # Pin at local (0, 50) → schematic (100, 250)
         sch.add_net(100, 200, 100, 250)
-        libs = self._make_libs([
-            Pin(name="P", direction="inout", x=0, y=0),
-            Pin(name="N", direction="inout", x=0, y=50),
-        ])
+        libs = self._make_libs(
+            [
+                Pin(name="P", direction="inout", x=0, y=0),
+                Pin(name="N", direction="inout", x=0, y=50),
+            ]
+        )
         result = validate(sch, libs=libs)
         assert not any(i.category == "unconnected_pin" for i in result.issues)
 
@@ -101,10 +103,12 @@ class TestUnconnectedPins:
         sch.add_component("r.sym", 100, 200, attributes={"name": "R1"})
         # Only connect one pin
         sch.add_net(100, 200, 100, 200)
-        libs = self._make_libs([
-            Pin(name="P", direction="inout", x=0, y=0),
-            Pin(name="N", direction="inout", x=0, y=50),
-        ])
+        libs = self._make_libs(
+            [
+                Pin(name="P", direction="inout", x=0, y=0),
+                Pin(name="N", direction="inout", x=0, y=50),
+            ]
+        )
         result = validate(sch, libs=libs)
         unconnected = [i for i in result.issues if i.category == "unconnected_pin"]
         assert len(unconnected) == 1

@@ -38,9 +38,9 @@ def _make_lib(tmp_path, structure: dict[str, list[str]]) -> list[Path]:
 class TestXschemConfigParsing:
     def test_set_and_append(self):
         text = (
-            'set XSCHEM_LIBRARY_PATH {}\n'
-            'append XSCHEM_LIBRARY_PATH :/usr/share/xschem/devices\n'
-            'append XSCHEM_LIBRARY_PATH :/home/user/mylib\n'
+            "set XSCHEM_LIBRARY_PATH {}\n"
+            "append XSCHEM_LIBRARY_PATH :/usr/share/xschem/devices\n"
+            "append XSCHEM_LIBRARY_PATH :/home/user/mylib\n"
         )
         paths = _parse_xschemrc(text)
         assert len(paths) == 2
@@ -49,18 +49,18 @@ class TestXschemConfigParsing:
 
     def test_variable_substitution(self):
         text = (
-            'set MYDIR /opt/pdk\n'
-            'set XSCHEM_LIBRARY_PATH {}\n'
-            'append XSCHEM_LIBRARY_PATH :$MYDIR/symbols\n'
+            "set MYDIR /opt/pdk\n"
+            "set XSCHEM_LIBRARY_PATH {}\n"
+            "append XSCHEM_LIBRARY_PATH :$MYDIR/symbols\n"
         )
         paths = _parse_xschemrc(text)
         assert paths[0] == Path("/opt/pdk/symbols")
 
     def test_braced_variable_substitution(self):
         text = (
-            'set MYDIR /opt/pdk\n'
-            'set XSCHEM_LIBRARY_PATH {}\n'
-            'append XSCHEM_LIBRARY_PATH :${MYDIR}/symbols\n'
+            "set MYDIR /opt/pdk\n"
+            "set XSCHEM_LIBRARY_PATH {}\n"
+            "append XSCHEM_LIBRARY_PATH :${MYDIR}/symbols\n"
         )
         paths = _parse_xschemrc(text)
         assert paths[0] == Path("/opt/pdk/symbols")
@@ -68,18 +68,18 @@ class TestXschemConfigParsing:
     def test_env_substitution(self, monkeypatch):
         monkeypatch.setenv("MY_TEST_PDK", "/custom/pdk")
         text = (
-            'set XSCHEM_LIBRARY_PATH {}\n'
-            'append XSCHEM_LIBRARY_PATH :$env(MY_TEST_PDK)/xschem\n'
+            "set XSCHEM_LIBRARY_PATH {}\n"
+            "append XSCHEM_LIBRARY_PATH :$env(MY_TEST_PDK)/xschem\n"
         )
         paths = _parse_xschemrc(text)
         assert paths[0] == Path("/custom/pdk/xschem")
 
     def test_comments_skipped(self):
         text = (
-            '# This is a comment\n'
-            'set XSCHEM_LIBRARY_PATH {}\n'
-            '# append XSCHEM_LIBRARY_PATH :/skip/this\n'
-            'append XSCHEM_LIBRARY_PATH :/keep/this\n'
+            "# This is a comment\n"
+            "set XSCHEM_LIBRARY_PATH {}\n"
+            "# append XSCHEM_LIBRARY_PATH :/skip/this\n"
+            "append XSCHEM_LIBRARY_PATH :/keep/this\n"
         )
         paths = _parse_xschemrc(text)
         assert len(paths) == 1
@@ -87,25 +87,21 @@ class TestXschemConfigParsing:
 
     def test_blank_lines_skipped(self):
         text = (
-            '\n'
-            'set XSCHEM_LIBRARY_PATH {}\n'
-            '\n'
-            'append XSCHEM_LIBRARY_PATH :/some/path\n'
-            '\n'
+            "\nset XSCHEM_LIBRARY_PATH {}\n\nappend XSCHEM_LIBRARY_PATH :/some/path\n\n"
         )
         paths = _parse_xschemrc(text)
         assert len(paths) == 1
 
     def test_empty_path_returns_empty(self):
-        text = '# nothing here\n'
+        text = "# nothing here\n"
         paths = _parse_xschemrc(text)
         assert paths == []
 
     def test_load_from_file(self, tmp_path):
         rc = tmp_path / "xschemrc"
         rc.write_text(
-            'set XSCHEM_LIBRARY_PATH {}\n'
-            'append XSCHEM_LIBRARY_PATH :/usr/share/xschem/devices\n'
+            "set XSCHEM_LIBRARY_PATH {}\n"
+            "append XSCHEM_LIBRARY_PATH :/usr/share/xschem/devices\n"
         )
         config = XschemConfig.load(rc)
         assert len(config.library_paths) == 1
@@ -135,7 +131,9 @@ class TestSymbolLibraryResolve:
         (lib1 / "devices").mkdir(parents=True)
         (lib2 / "devices").mkdir(parents=True)
         shutil.copy(SYM_FIXTURES / "res.sym", lib1 / "devices" / "res.sym")
-        shutil.copy(SYM_FIXTURES / "vsource.sym", lib2 / "devices" / "res.sym")  # different file
+        shutil.copy(
+            SYM_FIXTURES / "vsource.sym", lib2 / "devices" / "res.sym"
+        )  # different file
         lib = SymbolLibrary([lib1, lib2])
         sym = lib.resolve("devices/res.sym")
         assert sym.type == "resistor"  # from lib1, not lib2
@@ -164,9 +162,10 @@ class TestSymbolLibraryCaching:
 
 class TestSymbolLibrarySearch:
     def test_search_finds_match(self, tmp_path):
-        paths = _make_lib(tmp_path, {
-            "lib": ["devices/res.sym", "devices/nmos4.sym", "devices/vsource.sym"]
-        })
+        paths = _make_lib(
+            tmp_path,
+            {"lib": ["devices/res.sym", "devices/nmos4.sym", "devices/vsource.sym"]},
+        )
         lib = SymbolLibrary(paths)
         results = lib.search("res")
         assert "devices/res.sym" in results
@@ -183,9 +182,7 @@ class TestSymbolLibrarySearch:
         assert lib.search("nonexistent") == []
 
     def test_list_symbols(self, tmp_path):
-        paths = _make_lib(tmp_path, {
-            "lib": ["devices/res.sym", "devices/nmos4.sym"]
-        })
+        paths = _make_lib(tmp_path, {"lib": ["devices/res.sym", "devices/nmos4.sym"]})
         lib = SymbolLibrary(paths)
         syms = lib.list_symbols()
         assert len(syms) == 2

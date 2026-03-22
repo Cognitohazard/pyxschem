@@ -332,7 +332,9 @@ def _parse_polygon(line: str) -> Polygon:
     layer = int(parts[1])
     npoints = int(parts[2])
     coords = parts[3 : 3 + npoints * 2]
-    points = [(float(coords[j]), float(coords[j + 1])) for j in range(0, len(coords), 2)]
+    points = [
+        (float(coords[j]), float(coords[j + 1])) for j in range(0, len(coords), 2)
+    ]
 
     return Polygon(
         layer=layer,

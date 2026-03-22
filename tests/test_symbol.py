@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from pyxschem import Pin, Symbol
+from pyxschem import Symbol
 from pyxschem.model import RawLine
 from pyxschem.parser import parse_schematic, serialize_schematic
 
@@ -100,7 +100,9 @@ class TestMetadata:
 
     def test_no_k_block_returns_none(self):
         """Symbol with empty K block returns None for type/format."""
-        sym = Symbol.from_text("v {xschem version=3.4.5 file_version=1.2}\nG {}\nK {}\nV {}\nS {}\nE {}\n")
+        sym = Symbol.from_text(
+            "v {xschem version=3.4.5 file_version=1.2}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+        )
         assert sym.type is None
         assert sym.format is None
         assert sym.template == {}
@@ -116,6 +118,7 @@ class TestSymbolFromText:
 
 class TestExports:
     def test_import_symbol(self):
-        from pyxschem import Symbol, Pin
+        from pyxschem import Pin, Symbol
+
         assert Symbol is not None
         assert Pin is not None

@@ -133,7 +133,4 @@ def serialize_attributes(attrs: dict[str, str]) -> str:
 
 def _needs_quoting(value: str) -> bool:
     """Check if a value needs brace quoting."""
-    for ch in value:
-        if ch in " \t\n\r{}\"=":
-            return True
-    return False
+    return any(ch in ' \t\n\r{}"=' for ch in value)

@@ -39,7 +39,8 @@ class XschemCLI:
             if found is None:
                 raise FileNotFoundError(
                     "xschem binary not found on PATH. "
-                    "Install xschem (e.g., apt install xschem) or pass binary= explicitly."
+                    "Install xschem (e.g., apt install xschem) "
+                    "or pass binary= explicitly."
                 )
             self._binary = Path(found)
 
@@ -75,7 +76,9 @@ class XschemCLI:
         schematic = Path(schematic).resolve()
 
         if format not in _FORMAT_FLAGS:
-            raise ValueError(f"Unknown format '{format}'. Use: {list(_FORMAT_FLAGS.keys())}")
+            raise ValueError(
+                f"Unknown format '{format}'. Use: {list(_FORMAT_FLAGS.keys())}"
+            )
 
         if output_dir is None:
             output_dir = Path(tempfile.mkdtemp(prefix="pyxschem_"))
@@ -83,11 +86,26 @@ class XschemCLI:
             output_dir = Path(output_dir)
             output_dir.mkdir(parents=True, exist_ok=True)
 
-        args = ["-n", _FORMAT_FLAGS[format], "-o", str(output_dir), "-q", str(schematic)]
+        args = [
+            "-n",
+            _FORMAT_FLAGS[format],
+            "-o",
+            str(output_dir),
+            "-q",
+            str(schematic),
+        ]
 
         if output_name is not None:
-            args = ["-n", _FORMAT_FLAGS[format], "-o", str(output_dir),
-                    "-N", output_name, "-q", str(schematic)]
+            args = [
+                "-n",
+                _FORMAT_FLAGS[format],
+                "-o",
+                str(output_dir),
+                "-N",
+                output_name,
+                "-q",
+                str(schematic),
+            ]
 
         self.run(args)
 
@@ -121,5 +139,5 @@ class XschemCLI:
 
         Always includes -x (headless, no X display).
         """
-        cmd = [str(self._binary), "-x"] + args
+        cmd = [str(self._binary), "-x", *args]
         return subprocess.run(cmd, capture_output=True, text=True)

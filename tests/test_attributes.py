@@ -45,7 +45,9 @@ class TestParseQuoted:
 
 class TestParseBraced:
     def test_braced_value_with_spaces(self):
-        result = parse_attributes("{name=X1 value={sky130_fd_pr__nfet_01v8 W=1 L=0.15}}")
+        result = parse_attributes(
+            "{name=X1 value={sky130_fd_pr__nfet_01v8 W=1 L=0.15}}"
+        )
         assert result["value"] == "sky130_fd_pr__nfet_01v8 W=1 L=0.15"
 
     def test_braced_value_with_nested_braces(self):
@@ -57,7 +59,9 @@ class TestParseBraced:
         assert result["value"] == "W=1 L=0.15 nf=2"
 
     def test_mixed_simple_and_braced(self):
-        result = parse_attributes("{name=R1 value=10k model={sky130_fd_pr__res_generic_m1} m=1}")
+        result = parse_attributes(
+            "{name=R1 value=10k model={sky130_fd_pr__res_generic_m1} m=1}"
+        )
         assert result == {
             "name": "R1",
             "value": "10k",
@@ -103,7 +107,11 @@ class TestParseEdgeCases:
 
     def test_real_world_component(self):
         """Real xschem component attribute block."""
-        text = '{name=M1 model=nfet_01v8 w=1 l=0.15 nf=1 mult=1 ad="\'int((nf+1)/2) * W/nf * 0.29\'" pd="\'2*int((nf+1)/2) * (W/nf + 0.29)\'"}'
+        text = (
+            "{name=M1 model=nfet_01v8 w=1 l=0.15 nf=1 mult=1"
+            " ad=\"'int((nf+1)/2) * W/nf * 0.29'\""
+            " pd=\"'2*int((nf+1)/2) * (W/nf + 0.29)'\"}"
+        )
         result = parse_attributes(text)
         assert result["name"] == "M1"
         assert result["model"] == "nfet_01v8"

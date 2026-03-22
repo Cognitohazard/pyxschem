@@ -78,15 +78,19 @@ def get_pin_position(
     sym = libs.resolve(component.symbol)
     if sym is None:
         raise ValueError(
-            f"Cannot resolve symbol '{component.symbol}' for component '{component.name}'"
+            f"Cannot resolve symbol '{component.symbol}'"
+            f" for component '{component.name}'"
         )
 
     for pin in sym.pins:
         if pin.name == pin_name:
             return transform_pin(
-                pin.x, pin.y,
-                component.x, component.y,
-                component.rotation, component.mirror,
+                pin.x,
+                pin.y,
+                component.x,
+                component.y,
+                component.rotation,
+                component.mirror,
             )
 
     available = [p.name for p in sym.pins]

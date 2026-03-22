@@ -131,7 +131,9 @@ class TestMutation:
     def test_add_component(self):
         sch = Schematic.load(FIXTURES / "simple.sch")
         comp = sch.add_component(
-            "devices/cap.sym", x=400, y=-200,
+            "devices/cap.sym",
+            x=400,
+            y=-200,
             attributes={"name": "C1", "value": "100n"},
         )
         assert isinstance(comp, Component)
@@ -153,7 +155,9 @@ class TestMutationRoundTrip:
     def test_add_component_appears_in_output(self):
         sch = Schematic.load(FIXTURES / "simple.sch")
         sch.add_component(
-            "devices/cap.sym", x=400, y=-200,
+            "devices/cap.sym",
+            x=400,
+            y=-200,
             attributes={"name": "C1", "value": "100n"},
         )
         text = sch.to_text()

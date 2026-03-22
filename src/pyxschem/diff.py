@@ -114,7 +114,9 @@ def diff_schematics(old: Schematic, new: Schematic) -> SchemDiff:
             if ov != nv:
                 changed[ak] = (ov, nv)
         result.component_changes.append(
-            ComponentChange(name=key, kind="modified", old=oc, new=nc, changed_attrs=changed)
+            ComponentChange(
+                name=key, kind="modified", old=oc, new=nc, changed_attrs=changed
+            )
         )
 
     # --- Nets ---

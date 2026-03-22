@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from pyxschem import HierarchyNode, Schematic, SymbolLibrary
+from pyxschem import Schematic, SymbolLibrary
 
 HIER_FIXTURES = Path(__file__).parent / "fixtures" / "hierarchy"
 

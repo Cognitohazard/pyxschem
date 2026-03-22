@@ -17,7 +17,10 @@ class TestComponent:
     def test_to_line_generates_correct_format(self):
         c = Component(
             symbol="devices/res.sym",
-            x=300, y=-200, rotation=0, mirror=0,
+            x=300,
+            y=-200,
+            rotation=0,
+            mirror=0,
             attributes={"name": "R1", "value": "10k", "m": "1"},
         )
         assert c.to_line() == "C {devices/res.sym} 300 -200 0 0 {name=R1 value=10k m=1}"
@@ -26,7 +29,10 @@ class TestComponent:
         original = "C {devices/res.sym} 300 -200 0 0 {name=R1 value=10k m=1}"
         c = Component(
             symbol="devices/res.sym",
-            x=300, y=-200, rotation=0, mirror=0,
+            x=300,
+            y=-200,
+            rotation=0,
+            mirror=0,
             attributes={"name": "R1", "value": "10k", "m": "1"},
             raw_line=original,
         )
@@ -36,7 +42,10 @@ class TestComponent:
         original = "C {devices/res.sym} 300 -200 0 0 {name=R1 value=10k}"
         c = Component(
             symbol="devices/res.sym",
-            x=300, y=-200, rotation=0, mirror=0,
+            x=300,
+            y=-200,
+            rotation=0,
+            mirror=0,
             attributes={"name": "R1", "value": "10k"},
             raw_line=original,
         )
@@ -48,7 +57,10 @@ class TestComponent:
     def test_name_and_value_properties(self):
         c = Component(
             symbol="devices/res.sym",
-            x=0, y=0, rotation=0, mirror=0,
+            x=0,
+            y=0,
+            rotation=0,
+            mirror=0,
             attributes={"name": "R1", "value": "10k"},
         )
         assert c.name == "R1"
@@ -57,7 +69,10 @@ class TestComponent:
     def test_name_property_missing(self):
         c = Component(
             symbol="devices/res.sym",
-            x=0, y=0, rotation=0, mirror=0,
+            x=0,
+            y=0,
+            rotation=0,
+            mirror=0,
         )
         assert c.name is None
         assert c.value is None
@@ -65,14 +80,20 @@ class TestComponent:
     def test_empty_attributes(self):
         c = Component(
             symbol="devices/gnd.sym",
-            x=160, y=-70, rotation=0, mirror=0,
+            x=160,
+            y=-70,
+            rotation=0,
+            mirror=0,
         )
         assert c.to_line() == "C {devices/gnd.sym} 160 -70 0 0 {}"
 
     def test_attributes_with_spaces_are_braced(self):
         c = Component(
             symbol="devices/vsource.sym",
-            x=0, y=0, rotation=0, mirror=0,
+            x=0,
+            y=0,
+            rotation=0,
+            mirror=0,
             attributes={"name": "V1", "value": "PWL(0 0 1n 1.8)"},
         )
         line = c.to_line()
@@ -98,24 +119,40 @@ class TestNet:
 
     def test_raw_line_preserved(self):
         original = "N 160 -160 160 -200 {lab=VDD}"
-        n = Net(x1=160, y1=-160, x2=160, y2=-200,
-                attributes={"lab": "VDD"}, raw_line=original)
+        n = Net(
+            x1=160,
+            y1=-160,
+            x2=160,
+            y2=-200,
+            attributes={"lab": "VDD"},
+            raw_line=original,
+        )
         assert n.to_line() == original
 
 
 class TestText:
     def test_to_line(self):
         t = Text(
-            text="My Label", x=100, y=-400,
-            rotation=0, mirror=0, xscale=0.3, yscale=0.3,
+            text="My Label",
+            x=100,
+            y=-400,
+            rotation=0,
+            mirror=0,
+            xscale=0.3,
+            yscale=0.3,
         )
         assert t.to_line() == "T {My Label} 100 -400 0 0 0.3 0.3 {}"
 
     def test_raw_line_preserved(self):
         original = "T {My Label} 100 -400 0 0 0.3 0.3 {}"
         t = Text(
-            text="My Label", x=100, y=-400,
-            rotation=0, mirror=0, xscale=0.3, yscale=0.3,
+            text="My Label",
+            x=100,
+            y=-400,
+            rotation=0,
+            mirror=0,
+            xscale=0.3,
+            yscale=0.3,
             raw_line=original,
         )
         assert t.to_line() == original
@@ -139,8 +176,15 @@ class TestBox:
 
     def test_raw_line_preserved(self):
         original = "B 4 0 0 200 100 {dash=4}"
-        b = Box(layer=4, x1=0, y1=0, x2=200, y2=100,
-                attributes={"dash": "4"}, raw_line=original)
+        b = Box(
+            layer=4,
+            x1=0,
+            y1=0,
+            x2=200,
+            y2=100,
+            attributes={"dash": "4"},
+            raw_line=original,
+        )
         assert b.to_line() == original
 
 
@@ -151,8 +195,15 @@ class TestArc:
 
     def test_raw_line_preserved(self):
         original = "A 4 100 100 50 0 360 {}"
-        a = Arc(layer=4, x=100, y=100, r=50.0, start_angle=0.0, sweep_angle=360.0,
-                raw_line=original)
+        a = Arc(
+            layer=4,
+            x=100,
+            y=100,
+            r=50.0,
+            start_angle=0.0,
+            sweep_angle=360.0,
+            raw_line=original,
+        )
         assert a.to_line() == original
 
 

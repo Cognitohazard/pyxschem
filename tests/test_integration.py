@@ -9,19 +9,22 @@ Skip with: uv run pytest -m "not integration"
 """
 
 import pytest
+from conftest import HAS_XSCHEM, SYSTEM_DEVICES_DIR, SYSTEM_EXAMPLES
 
 from pyxschem import Schematic, XschemCLI, diff_schematics, validate
-
-from conftest import HAS_XSCHEM, SYSTEM_DEVICES_DIR, SYSTEM_EXAMPLES
 
 pytestmark = pytest.mark.integration
 
 # All example .sch files that ship with xschem
-EXAMPLE_SCHEMATICS = sorted(SYSTEM_EXAMPLES.glob("*.sch")) if SYSTEM_EXAMPLES.is_dir() else []
+EXAMPLE_SCHEMATICS = (
+    sorted(SYSTEM_EXAMPLES.glob("*.sch")) if SYSTEM_EXAMPLES.is_dir() else []
+)
 EXAMPLE_IDS = [p.name for p in EXAMPLE_SCHEMATICS]
 
 # All .sym files in the devices library
-DEVICE_SYMBOLS = sorted(SYSTEM_DEVICES_DIR.rglob("*.sym")) if SYSTEM_DEVICES_DIR.is_dir() else []
+DEVICE_SYMBOLS = (
+    sorted(SYSTEM_DEVICES_DIR.rglob("*.sym")) if SYSTEM_DEVICES_DIR.is_dir() else []
+)
 DEVICE_IDS = [str(p.relative_to(SYSTEM_DEVICES_DIR)) for p in DEVICE_SYMBOLS]
 
 
@@ -54,6 +57,7 @@ class TestRoundTripSystemExamples:
     def test_no_rawline_fallbacks(self, sch_path):
         """Every line should be parsed into a typed element, not a raw fallback."""
         from pyxschem.parser import parse_schematic
+
         text = sch_path.read_text()
         elements = parse_schematic(text)
         for el in elements:
@@ -76,12 +80,14 @@ class TestSymbolSystemLibrary:
     @pytest.mark.parametrize("sym_path", DEVICE_SYMBOLS, ids=DEVICE_IDS)
     def test_load_without_error(self, sym_path):
         from pyxschem import Symbol
+
         sym = Symbol.load(sym_path)
         assert sym is not None
 
     @pytest.mark.parametrize("sym_path", DEVICE_SYMBOLS, ids=DEVICE_IDS)
     def test_round_trip_byte_identical(self, sym_path):
         from pyxschem import Symbol
+
         original = sym_path.read_text()
         sym = Symbol.load(sym_path)
         assert sym.to_text() == original
@@ -90,6 +96,7 @@ class TestSymbolSystemLibrary:
     def test_pins_are_well_formed(self, sym_path):
         """Every pin should have a name and a direction string."""
         from pyxschem import Symbol
+
         sym = Symbol.load(sym_path)
         for pin in sym.pins:
             assert pin.name, f"Unnamed pin in {sym_path.name}"
@@ -107,9 +114,17 @@ class TestSymbolSystemLibrary:
 class TestSystemLibraryResolution:
     def test_resolve_common_symbols(self, system_libs):
         """Core device symbols must be resolvable."""
-        for ref in ["devices/res.sym", "devices/capa.sym", "devices/ind.sym",
-                     "devices/vsource.sym", "devices/nmos4.sym", "devices/pmos4.sym",
-                     "devices/diode.sym", "devices/npn.sym", "devices/pnp.sym"]:
+        for ref in [
+            "devices/res.sym",
+            "devices/capa.sym",
+            "devices/ind.sym",
+            "devices/vsource.sym",
+            "devices/nmos4.sym",
+            "devices/pmos4.sym",
+            "devices/diode.sym",
+            "devices/npn.sym",
+            "devices/pnp.sym",
+        ]:
             sym = system_libs.resolve(ref)
             assert sym is not None, f"Failed to resolve {ref}"
 
@@ -206,7 +221,9 @@ class TestMutationSystemExamples:
     def test_add_component_to_real_schematic(self, tmp_path):
         sch = Schematic.load(SYSTEM_EXAMPLES / "rlc.sch")
         original_count = len(sch.components)
-        sch.add_component("devices/res.sym", 500, 500, attributes={"name": "Rtest", "value": "47k"})
+        sch.add_component(
+            "devices/res.sym", 500, 500, attributes={"name": "Rtest", "value": "47k"}
+        )
         assert len(sch.components) == original_count + 1
 
         out = tmp_path / "added.sch"
@@ -326,7 +343,9 @@ class TestPinGeometryWithSystemLibrary:
         positions = {}
         for rot in range(4):
             sch = Schematic.new()
-            sch.add_component("devices/res.sym", 0, 0, rotation=rot, attributes={"name": "R1"})
+            sch.add_component(
+                "devices/res.sym", 0, 0, rotation=rot, attributes={"name": "R1"}
+            )
             sym = system_libs.resolve("devices/res.sym")
             pin = sym.pins[0]
             x, y = sch.pin_position("R1", pin.name, system_libs)
@@ -338,9 +357,13 @@ class TestPinGeometryWithSystemLibrary:
     def test_mirrored_component_pins(self, system_libs):
         """Mirror should flip pin positions."""
         sch_normal = Schematic.new()
-        sch_normal.add_component("devices/res.sym", 0, 0, mirror=0, attributes={"name": "R1"})
+        sch_normal.add_component(
+            "devices/res.sym", 0, 0, mirror=0, attributes={"name": "R1"}
+        )
         sch_mirror = Schematic.new()
-        sch_mirror.add_component("devices/res.sym", 0, 0, mirror=1, attributes={"name": "R1"})
+        sch_mirror.add_component(
+            "devices/res.sym", 0, 0, mirror=1, attributes={"name": "R1"}
+        )
 
         sym = system_libs.resolve("devices/res.sym")
         pin = sym.pins[0]
@@ -423,7 +446,9 @@ class TestEndToEndWorkflow:
 
         # Mutate — add a component
         sch.add_component(
-            "devices/capa.sym", 400, 400,
+            "devices/capa.sym",
+            400,
+            400,
             attributes={"name": "Cnew", "value": "100nF"},
         )
 
@@ -449,16 +474,32 @@ class TestEndToEndWorkflow:
         sch = Schematic.new()
 
         # Add components
-        sch.add_component("devices/vsource.sym", 0, -200, attributes={"name": "V1", "value": "5"})
-        sch.add_component("devices/res.sym", 200, -300, attributes={"name": "R1", "value": "1k"})
-        sch.add_component("devices/capa.sym", 200, -100, attributes={"name": "C1", "value": "10u"})
+        sch.add_component(
+            "devices/vsource.sym", 0, -200, attributes={"name": "V1", "value": "5"}
+        )
+        sch.add_component(
+            "devices/res.sym", 200, -300, attributes={"name": "R1", "value": "1k"}
+        )
+        sch.add_component(
+            "devices/capa.sym", 200, -100, attributes={"name": "C1", "value": "10u"}
+        )
         sch.add_component("devices/gnd.sym", 0, 0, attributes={"name": "l1"})
 
         assert len(sch.components) == 4
 
         # Wire them up
-        sch.connect("R1", system_libs.resolve("devices/res.sym").pins[0].name, "VIN", system_libs)
-        sch.connect("C1", system_libs.resolve("devices/capa.sym").pins[0].name, "VOUT", system_libs)
+        sch.connect(
+            "R1",
+            system_libs.resolve("devices/res.sym").pins[0].name,
+            "VIN",
+            system_libs,
+        )
+        sch.connect(
+            "C1",
+            system_libs.resolve("devices/capa.sym").pins[0].name,
+            "VOUT",
+            system_libs,
+        )
 
         assert len(sch.nets) == 2
 

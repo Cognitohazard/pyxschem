@@ -56,21 +56,25 @@ def walk_hierarchy(
 
         if sub_sch is not None:
             children = walk_hierarchy(sub_sch, libs, prefix=path)
-            nodes.append(HierarchyNode(
-                path=path,
-                component=comp,
-                symbol_path=comp.symbol,
-                is_subcircuit=True,
-                children=children,
-                schematic=sub_sch,
-            ))
+            nodes.append(
+                HierarchyNode(
+                    path=path,
+                    component=comp,
+                    symbol_path=comp.symbol,
+                    is_subcircuit=True,
+                    children=children,
+                    schematic=sub_sch,
+                )
+            )
         else:
-            nodes.append(HierarchyNode(
-                path=path,
-                component=comp,
-                symbol_path=comp.symbol,
-                is_subcircuit=False,
-            ))
+            nodes.append(
+                HierarchyNode(
+                    path=path,
+                    component=comp,
+                    symbol_path=comp.symbol,
+                    is_subcircuit=False,
+                )
+            )
 
     return nodes
 

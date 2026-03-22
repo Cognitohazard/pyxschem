@@ -8,13 +8,21 @@ from pyxschem.schematic import Schematic
 def _make_pair():
     """Create two identical simple schematics."""
     old = Schematic.new()
-    old.add_component("resistor.sym", 100, 200, attributes={"name": "R1", "value": "1k"})
-    old.add_component("capacitor.sym", 300, 200, attributes={"name": "C1", "value": "10n"})
+    old.add_component(
+        "resistor.sym", 100, 200, attributes={"name": "R1", "value": "1k"}
+    )
+    old.add_component(
+        "capacitor.sym", 300, 200, attributes={"name": "C1", "value": "10n"}
+    )
     old.add_net(100, 200, 300, 200)
 
     new = Schematic.new()
-    new.add_component("resistor.sym", 100, 200, attributes={"name": "R1", "value": "1k"})
-    new.add_component("capacitor.sym", 300, 200, attributes={"name": "C1", "value": "10n"})
+    new.add_component(
+        "resistor.sym", 100, 200, attributes={"name": "R1", "value": "1k"}
+    )
+    new.add_component(
+        "capacitor.sym", 300, 200, attributes={"name": "C1", "value": "10n"}
+    )
     new.add_net(100, 200, 300, 200)
 
     return old, new
@@ -89,9 +97,13 @@ class TestComponentChanges:
 
     def test_position_only_change_not_reported(self):
         old = Schematic.new()
-        old.add_component("resistor.sym", 100, 200, attributes={"name": "R1", "value": "1k"})
+        old.add_component(
+            "resistor.sym", 100, 200, attributes={"name": "R1", "value": "1k"}
+        )
         new = Schematic.new()
-        new.add_component("resistor.sym", 999, 999, attributes={"name": "R1", "value": "1k"})
+        new.add_component(
+            "resistor.sym", 999, 999, attributes={"name": "R1", "value": "1k"}
+        )
         diff = diff_schematics(old, new)
         assert diff.is_empty
 

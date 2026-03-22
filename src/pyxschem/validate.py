@@ -31,7 +31,9 @@ class ValidationIssue:
     """A single validation finding."""
 
     severity: Literal["error", "warning"]
-    category: Literal["duplicate_name", "missing_name", "floating_net", "unconnected_pin"]
+    category: Literal[
+        "duplicate_name", "missing_name", "floating_net", "unconnected_pin"
+    ]
     message: str
     element: Element | None
 
@@ -78,7 +80,10 @@ def _check_missing_names(sch: Schematic) -> list[ValidationIssue]:
                 ValidationIssue(
                     severity="warning",
                     category="missing_name",
-                    message=f"Component with symbol '{c.symbol}' at ({c.x}, {c.y}) has no name",
+                    message=(
+                        f"Component with symbol '{c.symbol}'"
+                        f" at ({c.x}, {c.y}) has no name"
+                    ),
                     element=c,
                 )
             )
@@ -113,7 +118,10 @@ def _check_floating_nets(sch: Schematic) -> list[ValidationIssue]:
                 ValidationIssue(
                     severity="warning",
                     category="floating_net",
-                    message=f"Net endpoint ({x}, {y}) is not connected to any component or other net",
+                    message=(
+                        f"Net endpoint ({x}, {y}) is not connected"
+                        " to any component or other net"
+                    ),
                     element=n,
                 )
             )
@@ -144,7 +152,10 @@ def _check_unconnected_pins(
                     ValidationIssue(
                         severity="warning",
                         category="unconnected_pin",
-                        message=f"Pin '{pin.name}' of '{comp_label}' at ({px}, {py}) has no net",
+                        message=(
+                            f"Pin '{pin.name}' of '{comp_label}'"
+                            f" at ({px}, {py}) has no net"
+                        ),
                         element=comp,
                     )
                 )

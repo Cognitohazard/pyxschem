@@ -77,12 +77,14 @@ class Symbol:
             if isinstance(e, Box) and e.layer == _PIN_LAYER and "name" in e.attributes:
                 cx = (e.x1 + e.x2) / 2
                 cy = (e.y1 + e.y2) / 2
-                result.append(Pin(
-                    name=e.attributes["name"],
-                    direction=e.attributes.get("dir", "inout"),
-                    x=cx,
-                    y=cy,
-                ))
+                result.append(
+                    Pin(
+                        name=e.attributes["name"],
+                        direction=e.attributes.get("dir", "inout"),
+                        x=cx,
+                        y=cy,
+                    )
+                )
         return result
 
     @property
@@ -125,7 +127,7 @@ class Symbol:
             if line.startswith("K "):
                 # K {content...} — extract the braced content
                 brace_start = line.index("{")
-                content = line[brace_start + 1:]
+                content = line[brace_start + 1 :]
                 # Find matching close brace
                 if content.endswith("}"):
                     content = content[:-1]

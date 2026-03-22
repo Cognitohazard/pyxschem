@@ -7,7 +7,6 @@ query methods, and mutation methods.
 from __future__ import annotations
 
 from pathlib import Path
-
 from typing import TYPE_CHECKING
 
 from pyxschem.model import Component, Element, Header, Net, Text
@@ -84,6 +83,7 @@ class Schematic:
             if line.startswith("v "):
                 # v {xschem version=3.4.5 file_version=1.2}
                 from pyxschem.attributes import parse_attributes
+
                 attrs = parse_attributes(line[2:])
                 return attrs.get("version")
 
@@ -200,6 +200,7 @@ class Schematic:
             (x, y) in schematic coordinates.
         """
         from pyxschem.generate import get_pin_position
+
         comp = self.get_component(comp_name)
         if comp is None:
             raise ValueError(f"Component '{comp_name}' not found")
@@ -226,6 +227,7 @@ class Schematic:
             The created Net.
         """
         from pyxschem.generate import connect_pin
+
         return connect_pin(self, comp_name, pin_name, label, libs)
 
     # -- Hierarchy --
@@ -240,6 +242,7 @@ class Schematic:
             List of top-level HierarchyNode instances.
         """
         from pyxschem.hierarchy import walk_hierarchy
+
         return walk_hierarchy(self, libs)
 
     def find_all(
@@ -256,11 +259,13 @@ class Schematic:
             symbol: Filter by symbol path substring.
         """
         from pyxschem.hierarchy import find_all
+
         return find_all(self, libs, prefix=prefix, symbol=symbol)
 
     def flatten(self, libs: SymbolLibrary) -> list[HierarchyNode]:
         """Flatten hierarchy into all leaf (primitive) components."""
         from pyxschem.hierarchy import flatten
+
         return flatten(self, libs)
 
     # -- Diffing --
@@ -275,6 +280,7 @@ class Schematic:
             A SchemDiff describing all changes.
         """
         from pyxschem.diff import diff_schematics
+
         return diff_schematics(self, other)
 
     # -- Validation --
@@ -289,6 +295,7 @@ class Schematic:
             ValidationResult with all found issues.
         """
         from pyxschem.validate import validate as _validate
+
         return _validate(self, libs=libs)
 
     # -- I/O --
@@ -308,5 +315,7 @@ class Schematic:
         elif self._path is not None:
             p = self._path
         else:
-            raise ValueError("No path specified and schematic was not loaded from a file")
+            raise ValueError(
+                "No path specified and schematic was not loaded from a file"
+            )
         p.write_text(self.to_text())

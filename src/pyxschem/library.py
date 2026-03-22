@@ -106,9 +106,8 @@ class SymbolLibrary:
                 continue
             for sym_path in sorted(base.rglob("*.sym")):
                 ref = str(sym_path.relative_to(base))
-                if query_lower in ref.lower():
-                    if ref not in results:
-                        results.append(ref)
+                if query_lower in ref.lower() and ref not in results:
+                    results.append(ref)
 
         return results
 

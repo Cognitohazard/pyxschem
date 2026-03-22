@@ -51,7 +51,10 @@ class Component:
         if self.raw_line is not None:
             return self.raw_line
         attrs = serialize_attributes(self.attributes)
-        return f"C {{{self.symbol}}} {_fmt_num(self.x)} {_fmt_num(self.y)} {self.rotation} {self.mirror} {attrs}"
+        return (
+            f"C {{{self.symbol}}} {_fmt_num(self.x)} {_fmt_num(self.y)}"
+            f" {self.rotation} {self.mirror} {attrs}"
+        )
 
     def set_attribute(self, key: str, value: str) -> None:
         self.attributes[key] = value
@@ -88,7 +91,10 @@ class Net:
         if self.raw_line is not None:
             return self.raw_line
         attrs = serialize_attributes(self.attributes)
-        return f"N {_fmt_num(self.x1)} {_fmt_num(self.y1)} {_fmt_num(self.x2)} {_fmt_num(self.y2)} {attrs}"
+        return (
+            f"N {_fmt_num(self.x1)} {_fmt_num(self.y1)}"
+            f" {_fmt_num(self.x2)} {_fmt_num(self.y2)} {attrs}"
+        )
 
     @property
     def label(self) -> str | None:
@@ -116,7 +122,11 @@ class Text:
         if self.raw_line is not None:
             return self.raw_line
         attrs = serialize_attributes(self.attributes)
-        return f"T {{{self.text}}} {_fmt_num(self.x)} {_fmt_num(self.y)} {self.rotation} {self.mirror} {self.xscale} {self.yscale} {attrs}"
+        return (
+            f"T {{{self.text}}} {_fmt_num(self.x)} {_fmt_num(self.y)}"
+            f" {self.rotation} {self.mirror}"
+            f" {self.xscale} {self.yscale} {attrs}"
+        )
 
 
 @dataclass
@@ -138,7 +148,10 @@ class GraphicLine:
         if self.raw_line is not None:
             return self.raw_line
         attrs = serialize_attributes(self.attributes)
-        return f"L {self.layer} {_fmt_num(self.x1)} {_fmt_num(self.y1)} {_fmt_num(self.x2)} {_fmt_num(self.y2)} {attrs}"
+        return (
+            f"L {self.layer} {_fmt_num(self.x1)} {_fmt_num(self.y1)}"
+            f" {_fmt_num(self.x2)} {_fmt_num(self.y2)} {attrs}"
+        )
 
 
 @dataclass
@@ -160,7 +173,10 @@ class Box:
         if self.raw_line is not None:
             return self.raw_line
         attrs = serialize_attributes(self.attributes)
-        return f"B {self.layer} {_fmt_num(self.x1)} {_fmt_num(self.y1)} {_fmt_num(self.x2)} {_fmt_num(self.y2)} {attrs}"
+        return (
+            f"B {self.layer} {_fmt_num(self.x1)} {_fmt_num(self.y1)}"
+            f" {_fmt_num(self.x2)} {_fmt_num(self.y2)} {attrs}"
+        )
 
 
 @dataclass
@@ -183,7 +199,11 @@ class Arc:
         if self.raw_line is not None:
             return self.raw_line
         attrs = serialize_attributes(self.attributes)
-        return f"A {self.layer} {_fmt_num(self.x)} {_fmt_num(self.y)} {_fmt_num(self.r)} {_fmt_num(self.start_angle)} {_fmt_num(self.sweep_angle)} {attrs}"
+        return (
+            f"A {self.layer} {_fmt_num(self.x)} {_fmt_num(self.y)}"
+            f" {_fmt_num(self.r)} {_fmt_num(self.start_angle)}"
+            f" {_fmt_num(self.sweep_angle)} {attrs}"
+        )
 
 
 @dataclass

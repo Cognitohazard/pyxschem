@@ -28,8 +28,12 @@ class TestRealWorldParsing:
 
     def test_no_rawline_fallbacks(self, sch_file):
         sch = Schematic.load(sch_file)
-        raw_lines = [e for e in sch._elements if isinstance(e, RawLine) and e.line.strip()]
-        assert raw_lines == [], f"Unexpected RawLine elements: {[r.line for r in raw_lines]}"
+        raw_lines = [
+            e for e in sch._elements if isinstance(e, RawLine) and e.line.strip()
+        ]
+        assert raw_lines == [], (
+            f"Unexpected RawLine elements: {[r.line for r in raw_lines]}"
+        )
 
     def test_components_have_names(self, sch_file):
         sch = Schematic.load(sch_file)

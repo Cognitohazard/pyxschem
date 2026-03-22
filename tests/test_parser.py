@@ -20,7 +20,9 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 class TestParseIndividualLines:
     def test_component_line(self):
-        elements = parse_schematic("C {devices/res.sym} 300 -200 0 0 {name=R1 value=10k}\n")
+        elements = parse_schematic(
+            "C {devices/res.sym} 300 -200 0 0 {name=R1 value=10k}\n"
+        )
         assert len(elements) == 1
         c = elements[0]
         assert isinstance(c, Component)
@@ -97,7 +99,9 @@ class TestParseIndividualLines:
 
 class TestParseHeader:
     def test_header_parsed(self):
-        text = "v {xschem version=3.4.5 file_version=1.2}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+        text = (
+            "v {xschem version=3.4.5 file_version=1.2}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+        )
         elements = parse_schematic(text)
         assert len(elements) == 1
         h = elements[0]
@@ -106,7 +110,9 @@ class TestParseHeader:
         assert h.raw_lines[0] == "v {xschem version=3.4.5 file_version=1.2}"
 
     def test_header_only_file(self):
-        text = "v {xschem version=3.4.5 file_version=1.2}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+        text = (
+            "v {xschem version=3.4.5 file_version=1.2}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+        )
         elements = parse_schematic(text)
         assert len(elements) == 1
         assert isinstance(elements[0], Header)
@@ -120,9 +126,17 @@ class TestParseFullFile:
         assert isinstance(elements[0], Header)
         types = [type(e).__name__ for e in elements[1:]]
         assert types == [
-            "Component", "Component", "Component",
-            "Net", "Net", "Net",
-            "Text", "GraphicLine", "Box", "Arc", "Polygon",
+            "Component",
+            "Component",
+            "Component",
+            "Net",
+            "Net",
+            "Net",
+            "Text",
+            "GraphicLine",
+            "Box",
+            "Arc",
+            "Polygon",
         ]
 
     def test_all_elements_have_raw_line(self):
@@ -163,7 +177,9 @@ class TestRoundTrip:
         text = (FIXTURES / "simple.sch").read_text()
         elements = parse_schematic(text)
         result = serialize_schematic(elements)
-        assert result == text, f"Round-trip failed:\n---EXPECTED---\n{text}\n---GOT---\n{result}"
+        assert result == text, (
+            f"Round-trip failed:\n---EXPECTED---\n{text}\n---GOT---\n{result}"
+        )
 
     def test_multiline_fixture_round_trip(self):
         text = (FIXTURES / "multiline.sch").read_text()
@@ -176,7 +192,9 @@ class TestRoundTrip:
         assert serialize_schematic([]) == ""
 
     def test_header_only_round_trip(self):
-        text = "v {xschem version=3.4.5 file_version=1.2}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+        text = (
+            "v {xschem version=3.4.5 file_version=1.2}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+        )
         elements = parse_schematic(text)
         result = serialize_schematic(elements)
         assert result == text

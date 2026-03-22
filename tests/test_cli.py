@@ -4,10 +4,9 @@ import shutil
 from pathlib import Path
 
 import pytest
+from conftest import HAS_XSCHEM
 
 from pyxschem import XschemCLI
-
-from conftest import HAS_XSCHEM
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
