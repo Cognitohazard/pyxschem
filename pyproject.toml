@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
 name = "pyxschem"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Python library for reading, editing, and generating xschem schematic files"
 readme = "README.md"
 license = "GPL-3.0-only"
@@ -29,8 +29,15 @@ Repository = "https://github.com/pyxschem/pyxschem"
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+    "pytest-cov>=4.0",
     "ruff>=0.4",
 ]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/pyxschem/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pyxschem"]
@@ -41,6 +48,13 @@ markers = [
     "integration: tests requiring xschem installed on the system",
 ]
 
+[tool.coverage.run]
+source = ["pyxschem"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+
 [tool.ruff]
 src = ["src"]
 target-version = "py310"
@@ -50,3 +64,4 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["F811"]
+"src/pyxschem/_version.py" = ["ALL"]

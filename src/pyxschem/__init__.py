@@ -1,6 +1,9 @@
 """pyxschem — Python library for xschem schematic files."""
 
-__version__ = "0.1.0"
+try:
+    from pyxschem._version import __version__
+except ModuleNotFoundError:
+    __version__ = "0.0.0+unknown"
 
 from pyxschem.attributes import parse_attributes, serialize_attributes
 from pyxschem.cli import XschemCLI
