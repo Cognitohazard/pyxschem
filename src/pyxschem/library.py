@@ -58,6 +58,11 @@ class SymbolLibrary:
         self._paths = paths
         self._cache: dict[str, Symbol] = {}
 
+    @property
+    def paths(self) -> list[Path]:
+        """Library search paths."""
+        return list(self._paths)
+
     @classmethod
     def from_config(cls, config: XschemConfig) -> SymbolLibrary:
         """Create library from parsed config."""

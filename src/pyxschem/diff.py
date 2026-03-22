@@ -30,10 +30,11 @@ class ComponentChange:
 
 @dataclass
 class NetChange:
-    """A net that was added or removed."""
+    """A net that was added, removed, or modified."""
 
-    kind: Literal["added", "removed"]
-    net: Net
+    kind: Literal["added", "removed", "modified"]
+    old: Net | None = None
+    new: Net | None = None
 
 
 @dataclass
@@ -123,18 +124,31 @@ def diff_schematics(old: Schematic, new: Schematic) -> SchemDiff:
     old_nets = {(n.x1, n.y1, n.x2, n.y2): n for n in old.nets}
     new_nets = {(n.x1, n.y1, n.x2, n.y2): n for n in new.nets}
 
-    for key in sorted(set(old_nets) - set(new_nets)):
-        result.net_changes.append(NetChange(kind="removed", net=old_nets[key]))
-    for key in sorted(set(new_nets) - set(old_nets)):
-        result.net_changes.append(NetChange(kind="added", net=new_nets[key]))
+    old_net_keys = set(old_nets)
+    new_net_keys = set(new_nets)
+
+    for key in sorted(old_net_keys - new_net_keys):
+        result.net_changes.append(NetChange(kind="removed", old=old_nets[key]))
+    for key in sorted(new_net_keys - old_net_keys):
+        result.net_changes.append(NetChange(kind="added", new=new_nets[key]))
+    for key in sorted(old_net_keys & new_net_keys):
+        on = old_nets[key]
+        nn = new_nets[key]
+        if on.attributes != nn.attributes:
+            result.net_changes.append(
+                NetChange(kind="modified", old=on, new=nn)
+            )
 
     # --- Texts ---
     old_texts = {t.text: t for t in old.texts}
     new_texts = {t.text: t for t in new.texts}
 
-    for key in sorted(set(old_texts) - set(new_texts)):
+    old_text_keys = set(old_texts)
+    new_text_keys = set(new_texts)
+
+    for key in sorted(old_text_keys - new_text_keys):
         result.text_changes.append(TextChange(kind="removed", text=old_texts[key]))
-    for key in sorted(set(new_texts) - set(old_texts)):
+    for key in sorted(new_text_keys - old_text_keys):
         result.text_changes.append(TextChange(kind="added", text=new_texts[key]))
 
     return result

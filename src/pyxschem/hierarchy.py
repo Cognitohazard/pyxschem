@@ -144,9 +144,11 @@ def _resolve_subcircuit(
     """
     from pyxschem.schematic import Schematic as Sch
 
+    search_paths = libs.paths
+
     # Direct .sch reference
     if symbol_ref.endswith(".sch"):
-        for base in libs._paths:
+        for base in search_paths:
             candidate = base / symbol_ref
             if candidate.is_file():
                 return Sch.load(candidate)
@@ -154,7 +156,7 @@ def _resolve_subcircuit(
 
     # Try adding .sch extension
     sch_ref = symbol_ref + ".sch"
-    for base in libs._paths:
+    for base in search_paths:
         candidate = base / sch_ref
         if candidate.is_file():
             return Sch.load(candidate)

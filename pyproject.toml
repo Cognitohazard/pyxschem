@@ -43,6 +43,7 @@ version-file = "src/pyxschem/_version.py"
 packages = ["src/pyxschem"]
 
 [tool.pytest.ini_options]
+addopts = "--cov=pyxschem --cov-report=term-missing"
 testpaths = ["tests"]
 markers = [
     "integration: tests requiring xschem installed on the system",

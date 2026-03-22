@@ -123,6 +123,26 @@ class TestNetChanges:
         assert len(diff.net_changes) == 1
         assert diff.net_changes[0].kind == "removed"
 
+    def test_modified_net_label(self):
+        old = Schematic.new()
+        old.add_net(100, 200, 300, 200, label="VDD")
+        new = Schematic.new()
+        new.add_net(100, 200, 300, 200, label="VCC")
+        diff = diff_schematics(old, new)
+        assert len(diff.net_changes) == 1
+        ch = diff.net_changes[0]
+        assert ch.kind == "modified"
+        assert ch.old.label == "VDD"
+        assert ch.new.label == "VCC"
+
+    def test_same_coords_same_label_no_change(self):
+        old = Schematic.new()
+        old.add_net(100, 200, 300, 200, label="VDD")
+        new = Schematic.new()
+        new.add_net(100, 200, 300, 200, label="VDD")
+        diff = diff_schematics(old, new)
+        assert len(diff.net_changes) == 0
+
 
 class TestTextChanges:
     def test_added_text(self):

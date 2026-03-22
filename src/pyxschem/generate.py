@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pyxschem.model import Net
-
 if TYPE_CHECKING:
     from pyxschem.library import SymbolLibrary
-    from pyxschem.model import Component
+    from pyxschem.model import Component, Net
     from pyxschem.schematic import Schematic
 
 
@@ -132,12 +130,4 @@ def connect_pin(
 
     px, py = get_pin_position(comp, pin_name, libs)
 
-    net = Net(
-        x1=px,
-        y1=py,
-        x2=px,
-        y2=py,
-        attributes={"lab": label},
-    )
-    schematic._elements.append(net)
-    return net
+    return schematic.add_net(x1=px, y1=py, x2=px, y2=py, label=label)
