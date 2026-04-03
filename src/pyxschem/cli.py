@@ -86,28 +86,17 @@ class XschemCLI:
             output_dir = Path(output_dir)
             output_dir.mkdir(parents=True, exist_ok=True)
 
-        args = [
-            "-n",
-            _FORMAT_FLAGS[format],
-            "-o",
-            str(output_dir),
-            "-q",
-            str(schematic),
-        ]
-
+        args = ["-n", _FORMAT_FLAGS[format], "-o", str(output_dir)]
         if output_name is not None:
-            args = [
-                "-n",
-                _FORMAT_FLAGS[format],
-                "-o",
-                str(output_dir),
-                "-N",
-                output_name,
-                "-q",
-                str(schematic),
-            ]
+            args += ["-N", output_name]
+        args += ["-q", str(schematic)]
 
-        self.run(args)
+        result = self.run(args)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"xschem netlist failed (exit code {result.returncode}):\n"
+                f"{result.stderr}"
+            )
 
         # Determine output filename
         if output_name is not None:
@@ -121,6 +110,11 @@ class XschemCLI:
     def command(self, tcl_cmd: str, schematic: str | Path | None = None) -> str:
         """Execute a Tcl command via xschem.
 
+        .. warning::
+            ``tcl_cmd`` is passed directly to the xschem Tcl interpreter.
+            Never pass unsanitised user input — Tcl can execute arbitrary
+            system commands (e.g. ``exec``).
+
         Args:
             tcl_cmd: Tcl command string to execute.
             schematic: Optional schematic to load before executing.
@@ -132,6 +126,11 @@ class XschemCLI:
         if schematic is not None:
             args.append(str(Path(schematic).resolve()))
         result = self.run(args)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"xschem command failed (exit code {result.returncode}):\n"
+                f"{result.stderr}"
+            )
         return result.stdout
 
     def run(self, args: list[str]) -> subprocess.CompletedProcess:

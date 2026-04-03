@@ -169,7 +169,8 @@ def _extract_braced(text: str, start: int) -> tuple[str, int]:
 
     Returns (content, position after closing brace).
     """
-    assert text[start] == "{"
+    if start >= len(text) or text[start] != "{":
+        raise ValueError(f"Expected '{{' at position {start}")
     depth = 1
     i = start + 1
     while i < len(text) and depth > 0:
@@ -194,6 +195,7 @@ def _find_last_braced(text: str) -> tuple[str, str]:
     # But we need the matching pair — find from the end
     # Walk backwards from end to find the last balanced {} block
     depth = 0
+    block_end = -1
     end = len(text) - 1
     while end >= 0:
         if text[end] == "}":
@@ -202,10 +204,9 @@ def _find_last_braced(text: str) -> tuple[str, str]:
                 block_end = end
         elif text[end] == "{":
             depth -= 1
-            if depth == 0:
-                block_start = end
-                content = text[block_start + 1 : block_end]
-                before = text[:block_start].rstrip()
+            if depth == 0 and block_end != -1:
+                content = text[end + 1 : block_end]
+                before = text[:end].rstrip()
                 return before, content
         end -= 1
 
@@ -215,7 +216,9 @@ def _find_last_braced(text: str) -> tuple[str, str]:
 def _parse_component(line: str) -> Component:
     """Parse: C {symbol} x y rotation mirror {attributes}"""
     # Extract symbol (first braced group after 'C ')
-    sym_start = line.index("{")
+    sym_start = line.find("{")
+    if sym_start == -1:
+        raise ValueError(f"Malformed component line (no '{{' found): {line!r}")
     symbol, after_sym = _extract_braced(line, sym_start)
 
     # Parse remaining positional fields and attributes
@@ -253,7 +256,9 @@ def _parse_net(line: str) -> Net:
 def _parse_text(line: str) -> Text:
     """Parse: T {text} x y rotation mirror xscale yscale {attributes}"""
     # Extract text (first braced group after 'T ')
-    text_start = line.index("{")
+    text_start = line.find("{")
+    if text_start == -1:
+        raise ValueError(f"Malformed text line (no '{{' found): {line!r}")
     text_content, after_text = _extract_braced(line, text_start)
 
     # Parse remaining fields and attributes

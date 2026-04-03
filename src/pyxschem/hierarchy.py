@@ -31,6 +31,7 @@ def walk_hierarchy(
     sch: Schematic,
     libs: SymbolLibrary,
     prefix: str = "",
+    _visited: frozenset[str] | None = None,
 ) -> list[HierarchyNode]:
     """Walk the design hierarchy tree.
 
@@ -44,7 +45,13 @@ def walk_hierarchy(
 
     Returns:
         List of top-level HierarchyNode instances.
+
+    Raises:
+        RecursionError: If a circular subcircuit dependency is detected.
     """
+    if _visited is None:
+        _visited = frozenset()
+
     nodes: list[HierarchyNode] = []
 
     for comp in sch.components:
@@ -55,7 +62,17 @@ def walk_hierarchy(
         sub_sch = _resolve_subcircuit(comp.symbol, libs)
 
         if sub_sch is not None:
-            children = walk_hierarchy(sub_sch, libs, prefix=path)
+            if comp.symbol in _visited:
+                raise RecursionError(
+                    f"Circular subcircuit dependency detected: "
+                    f"{comp.symbol!r} at path {path!r}"
+                )
+            children = walk_hierarchy(
+                sub_sch,
+                libs,
+                prefix=path,
+                _visited=_visited | {comp.symbol},
+            )
             nodes.append(
                 HierarchyNode(
                     path=path,

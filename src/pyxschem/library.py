@@ -28,7 +28,7 @@ class XschemConfig:
     def load(cls, path: str | Path) -> XschemConfig:
         """Parse an xschemrc file."""
         p = Path(path)
-        text = p.read_text()
+        text = p.read_text(encoding="utf-8")
         paths = _parse_xschemrc(text, base_dir=p.parent)
         return cls(paths)
 
@@ -85,6 +85,9 @@ class SymbolLibrary:
 
         for base in self._paths:
             candidate = base / symbol_ref
+            # Prevent path traversal — resolved path must remain under base
+            if not candidate.resolve().is_relative_to(base.resolve()):
+                continue
             if candidate.is_file():
                 sym = Symbol.load(candidate)
                 self._cache[symbol_ref] = sym
@@ -118,17 +121,7 @@ class SymbolLibrary:
 
     def list_symbols(self) -> list[str]:
         """List all available symbol references."""
-        results: list[str] = []
-
-        for base in self._paths:
-            if not base.is_dir():
-                continue
-            for sym_path in sorted(base.rglob("*.sym")):
-                ref = str(sym_path.relative_to(base))
-                if ref not in results:
-                    results.append(ref)
-
-        return results
+        return self.search("")
 
 
 # -- xschemrc parsing --
