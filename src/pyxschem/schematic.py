@@ -6,6 +6,8 @@ query methods, and mutation methods.
 
 from __future__ import annotations
 
+import os
+import stat
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -321,8 +323,14 @@ class Schematic:
             )
         # Atomic write: write to a temp file in the same directory, then
         # rename.  This avoids leaving a half-written file on interruption.
+        # Preserve original file permissions when overwriting an existing file.
+        original_mode = None
+        if p.exists():
+            original_mode = stat.S_IMODE(os.stat(p).st_mode)
         fd, tmp = tempfile.mkstemp(dir=p.parent, suffix=".tmp")
         try:
+            if original_mode is not None:
+                os.fchmod(fd, original_mode)
             with open(fd, "w", encoding="utf-8") as f:
                 f.write(self.to_text())
             Path(tmp).replace(p)
