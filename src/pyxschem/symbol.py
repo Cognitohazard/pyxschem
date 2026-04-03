@@ -14,7 +14,7 @@ from pathlib import Path
 
 from pyxschem.attributes import parse_attributes
 from pyxschem.model import Box, Element, Header
-from pyxschem.parser import parse_schematic, serialize_schematic
+from pyxschem.parser import _extract_braced, parse_schematic, serialize_schematic
 
 # Layer used for pin boxes in xschem .sym files
 _PIN_LAYER = 5
@@ -51,7 +51,7 @@ class Symbol:
     def load(cls, path: str | Path) -> Symbol:
         """Load a .sym file from disk."""
         p = Path(path)
-        text = p.read_text()
+        text = p.read_text(encoding="utf-8")
         elements = parse_schematic(text)
         return cls(elements, path=p)
 
@@ -125,12 +125,10 @@ class Symbol:
 
         for line in header.raw_lines:
             if line.startswith("K "):
-                # K {content...} — extract the braced content
-                brace_start = line.index("{")
-                content = line[brace_start + 1 :]
-                # Find matching close brace
-                if content.endswith("}"):
-                    content = content[:-1]
+                brace_start = line.find("{")
+                if brace_start == -1:
+                    continue
+                content, _ = _extract_braced(line, brace_start)
                 self._k_attrs = parse_attributes(content)
                 break
 

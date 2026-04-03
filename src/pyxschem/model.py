@@ -16,7 +16,7 @@ def _fmt_num(v: float) -> str:
     """Format a number: 300.0 → '300', 63.75 → '63.75'."""
     if v == int(v):
         return str(int(v))
-    return str(v)
+    return format(v, ".10g")
 
 
 @dataclass
