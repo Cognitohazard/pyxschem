@@ -14,7 +14,7 @@ from pathlib import Path
 
 from pyxschem.attributes import parse_attributes
 from pyxschem.model import Box, Element, Header
-from pyxschem.parser import _extract_braced, parse_schematic, serialize_schematic
+from pyxschem.parser import extract_braced, parse_schematic, serialize_schematic
 
 # Layer used for pin boxes in xschem .sym files
 _PIN_LAYER = 5
@@ -128,7 +128,7 @@ class Symbol:
                 brace_start = line.find("{")
                 if brace_start == -1:
                     continue
-                content, _ = _extract_braced(line, brace_start)
+                content, _ = extract_braced(line, brace_start)
                 self._k_attrs = parse_attributes(content)
                 break
 

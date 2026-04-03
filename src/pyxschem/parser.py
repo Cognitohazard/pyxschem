@@ -164,7 +164,7 @@ def _brace_depth(line: str, in_quote: bool) -> tuple[int, bool]:
     return depth, in_quote
 
 
-def _extract_braced(text: str, start: int) -> tuple[str, int]:
+def extract_braced(text: str, start: int) -> tuple[str, int]:
     """Extract content between {} starting at position of opening brace.
 
     Returns (content, position after closing brace).
@@ -219,7 +219,7 @@ def _parse_component(line: str) -> Component:
     sym_start = line.find("{")
     if sym_start == -1:
         raise ValueError(f"Malformed component line (no '{{' found): {line!r}")
-    symbol, after_sym = _extract_braced(line, sym_start)
+    symbol, after_sym = extract_braced(line, sym_start)
 
     # Parse remaining positional fields and attributes
     rest = line[after_sym:].strip()
@@ -259,7 +259,7 @@ def _parse_text(line: str) -> Text:
     text_start = line.find("{")
     if text_start == -1:
         raise ValueError(f"Malformed text line (no '{{' found): {line!r}")
-    text_content, after_text = _extract_braced(line, text_start)
+    text_content, after_text = extract_braced(line, text_start)
 
     # Parse remaining fields and attributes
     rest = line[after_text:].strip()
