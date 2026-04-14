@@ -12,6 +12,69 @@ from dataclasses import dataclass, field
 from pyxschem.attributes import serialize_attributes
 
 
+class _DirtyDict(dict):
+    """Dict subclass that auto-clears its owner's raw_line on mutation."""
+
+    __slots__ = ("_owner",)
+
+    def __init__(self, *args: object, _owner: object = None, **kwargs: object):
+        super().__init__(*args, **kwargs)
+        self._owner = _owner
+
+    def _mark(self) -> None:
+        if self._owner is not None and hasattr(self._owner, "raw_line"):
+            object.__setattr__(self._owner, "raw_line", None)
+
+    def __setitem__(self, key: str, value: str) -> None:
+        super().__setitem__(key, value)
+        self._mark()
+
+    def __delitem__(self, key: str) -> None:
+        super().__delitem__(key)
+        self._mark()
+
+    def update(self, *args: object, **kwargs: object) -> None:  # type: ignore[override]
+        super().update(*args, **kwargs)
+        self._mark()
+
+    def pop(self, *args: object) -> object:  # type: ignore[override]
+        existed = args[0] in self
+        result = super().pop(*args)
+        if existed:
+            self._mark()
+        return result
+
+    def clear(self) -> None:
+        super().clear()
+        self._mark()
+
+    def setdefault(self, key: str, default: object = "") -> object:  # type: ignore[override]
+        if key not in self:
+            result = super().setdefault(key, default)
+            self._mark()
+            return result
+        return super().setdefault(key, default)
+
+
+class _AutoDirtyMixin:
+    """Auto-clear raw_line on field assignment; wrap attributes dicts."""
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if name == "attributes" and isinstance(value, dict):
+            value = _DirtyDict(value, _owner=self)
+        super().__setattr__(name, value)
+        if name != "raw_line" and hasattr(self, "raw_line"):
+            super().__setattr__("raw_line", None)
+
+    def set_attribute(self, key: str, value: str) -> None:
+        """Set an attribute; auto-clears raw_line via _DirtyDict."""
+        self.attributes[key] = value
+
+    def mark_dirty(self) -> None:
+        """Call after in-place list mutation (e.g. ``points.append()``)."""
+        self.raw_line = None
+
+
 def _fmt_num(v: float) -> str:
     """Format a number: 300.0 → '300', 63.75 → '63.75'."""
     if v == int(v):
@@ -21,19 +84,52 @@ def _fmt_num(v: float) -> str:
 
 @dataclass
 class Header:
-    """The file header block (v, G, K, V, S, E lines).
+    """The file header block (v, G, K, V, S, E/F lines).
 
     Stored as raw lines since these are rarely modified programmatically.
     """
 
     raw_lines: list[str] = field(default_factory=list)
 
+    @classmethod
+    def default_schematic(
+        cls, version: str = "3.4.5", file_version: str = "1.2"
+    ) -> Header:
+        """Create a default schematic header."""
+        return cls(
+            raw_lines=[
+                f"v {{xschem version={version} file_version={file_version}}}",
+                "G {}",
+                "K {}",
+                "V {}",
+                "S {}",
+                "E {}",
+            ]
+        )
+
+    @classmethod
+    def default_symbol(
+        cls, version: str = "3.4.5", file_version: str = "1.2"
+    ) -> Header:
+        """Create a default symbol header."""
+        return cls(
+            raw_lines=[
+                f"v {{xschem version={version} file_version={file_version}}}",
+                "G {}",
+                "K {}",
+                "V {}",
+                "S {}",
+                "F {}",
+                "E {}",
+            ]
+        )
+
     def to_lines(self) -> list[str]:
         return list(self.raw_lines)
 
 
 @dataclass
-class Component:
+class Component(_AutoDirtyMixin):
     """A component instance (C line).
 
     Format: C {symbol} x y rotation mirror {attributes}
@@ -56,10 +152,6 @@ class Component:
             f" {self.rotation} {self.mirror} {attrs}"
         )
 
-    def set_attribute(self, key: str, value: str) -> None:
-        self.attributes[key] = value
-        self.raw_line = None
-
     @property
     def name(self) -> str | None:
         return self.attributes.get("name")
@@ -74,7 +166,7 @@ class Component:
 
 
 @dataclass
-class Net:
+class Net(_AutoDirtyMixin):
     """A wire/net segment (N line).
 
     Format: N x1 y1 x2 y2 {attributes}
@@ -102,7 +194,7 @@ class Net:
 
 
 @dataclass
-class Text:
+class Text(_AutoDirtyMixin):
     """A text annotation (T line).
 
     Format: T {text} x y rotation mirror xscale yscale {attributes}
@@ -129,8 +221,9 @@ class Text:
         )
 
 
+
 @dataclass
-class GraphicLine:
+class GraphicLine(_AutoDirtyMixin):
     """A graphical line (L line).
 
     Format: L layer x1 y1 x2 y2 {attributes}
@@ -154,8 +247,9 @@ class GraphicLine:
         )
 
 
+
 @dataclass
-class Box:
+class Box(_AutoDirtyMixin):
     """A graphical box/rectangle (B line).
 
     Format: B layer x1 y1 x2 y2 {attributes}
@@ -179,8 +273,9 @@ class Box:
         )
 
 
+
 @dataclass
-class Arc:
+class Arc(_AutoDirtyMixin):
     """A graphical arc (A line).
 
     Format: A layer x y r start_angle sweep_angle {attributes}
@@ -206,8 +301,9 @@ class Arc:
         )
 
 
+
 @dataclass
-class Polygon:
+class Polygon(_AutoDirtyMixin):
     """A polygon (P line).
 
     Format: P layer npoints x1 y1 x2 y2 ... {attributes}
@@ -224,6 +320,7 @@ class Polygon:
         coords = " ".join(f"{_fmt_num(x)} {_fmt_num(y)}" for x, y in self.points)
         attrs = serialize_attributes(self.attributes)
         return f"P {self.layer} {len(self.points)} {coords} {attrs}"
+
 
 
 @dataclass

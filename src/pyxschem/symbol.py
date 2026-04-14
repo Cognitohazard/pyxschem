@@ -12,9 +12,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from pyxschem._base import _ElementContainerMixin
 from pyxschem.attributes import parse_attributes
-from pyxschem.model import Box, Element, Header
-from pyxschem.parser import extract_braced, parse_schematic, serialize_schematic
+from pyxschem.model import Box, Element, Header, Text
+from pyxschem.parser import extract_braced, parse_schematic
 
 # Layer used for pin boxes in xschem .sym files
 _PIN_LAYER = 5
@@ -30,7 +31,7 @@ class Pin:
     y: float
 
 
-class Symbol:
+class Symbol(_ElementContainerMixin):
     """An xschem symbol — a component's interface definition.
 
     Usage::
@@ -41,6 +42,11 @@ class Symbol:
         sym.format      # "@name @pinlist @value m=@m"
         sym.template    # {"name": "R1", "value": "1k", ...}
     """
+
+    def _make_default_header(
+        self, version: str, file_version: str
+    ) -> Header:
+        return Header.default_symbol(version, file_version)
 
     def __init__(self, elements: list[Element], path: Path | None = None) -> None:
         self._elements = elements
@@ -60,14 +66,12 @@ class Symbol:
         """Parse a symbol from a string."""
         return cls(parse_schematic(text))
 
-    # -- Properties --
+    @classmethod
+    def new(cls) -> Symbol:
+        """Create a new symbol with a default xschem header."""
+        return cls([Header.default_symbol()])
 
-    @property
-    def header(self) -> Header | None:
-        for e in self._elements:
-            if isinstance(e, Header):
-                return e
-        return None
+    # -- Properties --
 
     @property
     def pins(self) -> list[Pin]:
@@ -105,11 +109,51 @@ class Symbol:
             return {}
         return parse_attributes(raw)
 
-    # -- I/O --
+    def add_pin(
+        self,
+        name: str,
+        direction: str,
+        x: float,
+        y: float,
+        size: float = 5,
+    ) -> Box:
+        """Add a pin box to the symbol and return the underlying Box element."""
+        half = size / 2
+        item = Box(
+            layer=_PIN_LAYER,
+            x1=x - half,
+            y1=y - half,
+            x2=x + half,
+            y2=y + half,
+            attributes={"name": name, "dir": direction},
+        )
+        self._elements.append(item)
+        return item
 
-    def to_text(self) -> str:
-        """Serialize the symbol to a string."""
-        return serialize_schematic(self._elements)
+    def add_text(
+        self,
+        text: str,
+        x: float,
+        y: float,
+        rotation: int = 0,
+        mirror: int = 0,
+        xscale: float = 0.2,
+        yscale: float = 0.2,
+        attributes: dict[str, str] | None = None,
+    ) -> Text:
+        """Add a text annotation to the symbol."""
+        item = Text(
+            text=text,
+            x=x,
+            y=y,
+            rotation=rotation,
+            mirror=mirror,
+            xscale=xscale,
+            yscale=yscale,
+            attributes=attributes or {},
+        )
+        self._elements.append(item)
+        return item
 
     # -- Internal --
 

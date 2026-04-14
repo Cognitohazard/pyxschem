@@ -6,14 +6,12 @@ query methods, and mutation methods.
 
 from __future__ import annotations
 
-import os
-import stat
-import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pyxschem._base import _ElementContainerMixin
 from pyxschem.model import Component, Element, Header, Net, Text
-from pyxschem.parser import parse_schematic, serialize_schematic
+from pyxschem.parser import parse_schematic
 
 if TYPE_CHECKING:
     from pyxschem.diff import SchemDiff
@@ -22,7 +20,7 @@ if TYPE_CHECKING:
     from pyxschem.validate import ValidationResult
 
 
-class Schematic:
+class Schematic(_ElementContainerMixin):
     """An xschem schematic — the main user-facing object.
 
     Usage::
@@ -32,6 +30,11 @@ class Schematic:
         sch.set_component_value("R1", "4.7k")
         sch.save("amplifier_modified.sch")
     """
+
+    def _make_default_header(
+        self, version: str, file_version: str
+    ) -> Header:
+        return Header.default_schematic(version, file_version)
 
     def __init__(self, elements: list[Element], path: Path | None = None) -> None:
         self._elements = elements
@@ -52,8 +55,8 @@ class Schematic:
 
     @classmethod
     def new(cls) -> Schematic:
-        """Create an empty schematic."""
-        return cls([])
+        """Create a new schematic with a default xschem header."""
+        return cls([Header.default_schematic()])
 
     # -- Properties --
 
@@ -64,17 +67,6 @@ class Schematic:
     @property
     def nets(self) -> list[Net]:
         return [e for e in self._elements if isinstance(e, Net)]
-
-    @property
-    def texts(self) -> list[Text]:
-        return [e for e in self._elements if isinstance(e, Text)]
-
-    @property
-    def header(self) -> Header | None:
-        for e in self._elements:
-            if isinstance(e, Header):
-                return e
-        return None
 
     @property
     def version(self) -> str | None:
@@ -141,6 +133,20 @@ class Schematic:
             raise ValueError(f"Component '{name}' not found")
         self._elements.remove(c)
 
+    def remove_net(self, net: Net) -> None:
+        """Remove a net by object identity."""
+        try:
+            self._elements.remove(net)
+        except ValueError:
+            raise ValueError("Net not found in schematic") from None
+
+    def remove_text(self, text: Text) -> None:
+        """Remove a text element by object identity."""
+        try:
+            self._elements.remove(text)
+        except ValueError:
+            raise ValueError("Text not found in schematic") from None
+
     def add_component(
         self,
         symbol: str,
@@ -183,6 +189,31 @@ class Schematic:
         net = Net(x1=x1, y1=y1, x2=x2, y2=y2, attributes=attrs)
         self._elements.append(net)
         return net
+
+    def add_text(
+        self,
+        text: str,
+        x: float,
+        y: float,
+        rotation: int = 0,
+        mirror: int = 0,
+        xscale: float = 0.4,
+        yscale: float = 0.4,
+        attributes: dict[str, str] | None = None,
+    ) -> Text:
+        """Add a text annotation to the schematic."""
+        item = Text(
+            text=text,
+            x=x,
+            y=y,
+            rotation=rotation,
+            mirror=mirror,
+            xscale=xscale,
+            yscale=yscale,
+            attributes=attributes or {},
+        )
+        self._elements.append(item)
+        return item
 
     # -- Generation --
 
@@ -300,40 +331,3 @@ class Schematic:
         from pyxschem.validate import validate as _validate
 
         return _validate(self, libs=libs)
-
-    # -- I/O --
-
-    def to_text(self) -> str:
-        """Serialize the schematic to a string."""
-        return serialize_schematic(self._elements)
-
-    def save(self, path: str | Path | None = None) -> None:
-        """Write the schematic to a file.
-
-        Args:
-            path: Output path. If None, uses the original load path.
-        """
-        if path is not None:
-            p = Path(path)
-        elif self._path is not None:
-            p = self._path
-        else:
-            raise ValueError(
-                "No path specified and schematic was not loaded from a file"
-            )
-        # Atomic write: write to a temp file in the same directory, then
-        # rename.  This avoids leaving a half-written file on interruption.
-        # Preserve original file permissions when overwriting an existing file.
-        original_mode = None
-        if p.exists():
-            original_mode = stat.S_IMODE(os.stat(p).st_mode)
-        fd, tmp = tempfile.mkstemp(dir=p.parent, suffix=".tmp")
-        try:
-            if original_mode is not None:
-                os.fchmod(fd, original_mode)
-            with open(fd, "w", encoding="utf-8") as f:
-                f.write(self.to_text())
-            Path(tmp).replace(p)
-        except BaseException:
-            Path(tmp).unlink(missing_ok=True)
-            raise

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from pyxschem import Component, Schematic
+from pyxschem import Component, Net, Schematic, Text
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -33,7 +33,8 @@ class TestLoadSave:
         sch = Schematic.new()
         assert sch.components == []
         assert sch.nets == []
-        assert sch.header is None
+        assert sch.header is not None
+        assert sch.version == "3.4.5"
 
     def test_to_text(self):
         text = (FIXTURES / "simple.sch").read_text()
@@ -141,6 +142,49 @@ class TestMutation:
         assert sch.get_component("C1") is not None
         assert sch.get_component("C1").value == "100n"
 
+    def test_set_version_updates_header(self):
+        sch = Schematic.load(FIXTURES / "simple.sch")
+        sch.set_version("9.9.9", "2.0")
+        assert sch.version == "9.9.9"
+        assert sch.header.raw_lines[0] == "v {xschem version=9.9.9 file_version=2.0}"
+
+    def test_set_version_creates_header_when_missing(self):
+        sch = Schematic.from_text("N 0 0 100 0 {}\n")
+        assert sch.header is None
+        sch.set_version("9.9.9", "2.0")
+        assert sch.header is not None
+        assert sch.header.raw_lines[0] == "v {xschem version=9.9.9 file_version=2.0}"
+
+    def test_add_text(self):
+        sch = Schematic.new()
+        text = sch.add_text("hello", 10, 20)
+        assert text in sch.texts
+        assert "T {hello} 10 20 0 0 0.4 0.4 {}" in sch.to_text()
+
+    def test_add_graphics_and_accessors(self):
+        sch = Schematic.new()
+        line = sch.add_line(4, 0, 0, 10, 10)
+        box = sch.add_box(4, 0, 0, 20, 10)
+        arc = sch.add_arc(4, 10, 10, 5, 0, 180)
+        polygon = sch.add_polygon(4, [(0, 0), (10, 0), (5, 5)])
+
+        assert line in sch.lines
+        assert box in sch.boxes
+        assert arc in sch.arcs
+        assert polygon in sch.polygons
+
+    def test_remove_net_by_identity(self):
+        sch = Schematic.load(FIXTURES / "simple.sch")
+        net = sch.nets[0]
+        sch.remove_net(net)
+        assert net not in sch.nets
+
+    def test_remove_text_by_identity(self):
+        sch = Schematic.load(FIXTURES / "simple.sch")
+        text = sch.texts[0]
+        sch.remove_text(text)
+        assert text not in sch.texts
+
 
 class TestMutationRoundTrip:
     def test_modify_value_only_changes_that_line(self):
@@ -179,3 +223,25 @@ class TestMutationRoundTrip:
         assert reloaded.get_component("R1").value == "4.7k"
         # Other values preserved
         assert reloaded.get_component("V1").value == "1.8"
+
+    def test_field_assignment_auto_dirties_on_serialize(self):
+        sch = Schematic.load(FIXTURES / "simple.sch")
+        line = sch.lines[0]
+        line.x1 = 75
+        # No mark_dirty() needed — auto-dirty via __setattr__
+        text = sch.to_text()
+        assert "L 4 75 -350 400 -350 {}" in text
+
+    def test_remove_net_error_guard(self):
+        sch = Schematic.new()
+        fake_net = Net(x1=0, y1=0, x2=1, y2=1)
+        with pytest.raises(ValueError, match="Net not found"):
+            sch.remove_net(fake_net)
+
+    def test_remove_text_error_guard(self):
+        sch = Schematic.new()
+        fake_text = Text(
+            text="x", x=0, y=0, rotation=0, mirror=0, xscale=0.4, yscale=0.4
+        )
+        with pytest.raises(ValueError, match="Text not found"):
+            sch.remove_text(fake_text)

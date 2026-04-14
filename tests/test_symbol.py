@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from pyxschem import Symbol
-from pyxschem.model import RawLine
+from pyxschem.model import Box, RawLine
 from pyxschem.parser import parse_schematic, serialize_schematic
 
 SYM_FIXTURES = Path(__file__).parent / "fixtures" / "real" / "sym"
@@ -114,6 +114,90 @@ class TestSymbolFromText:
         sym = Symbol.from_text(text)
         assert sym.type == "resistor"
         assert len(sym.pins) == 2
+
+
+class TestSymbolMutation:
+    def test_new_has_default_symbol_header(self):
+        sym = Symbol.new()
+        assert sym.header is not None
+        assert sym.header.raw_lines == [
+            "v {xschem version=3.4.5 file_version=1.2}",
+            "G {}",
+            "K {}",
+            "V {}",
+            "S {}",
+            "F {}",
+            "E {}",
+        ]
+
+    def test_set_version_updates_header(self):
+        sym = Symbol.new()
+        sym.set_version("9.9.9", "2.0")
+        assert sym.header.raw_lines[0] == "v {xschem version=9.9.9 file_version=2.0}"
+
+    def test_set_version_creates_header_when_missing(self):
+        sym = Symbol.from_text("B 5 -1 -1 1 1 {name=p dir=in}\n")
+        assert sym.header is None
+        sym.set_version("9.9.9", "2.0")
+        assert sym.header is not None
+        assert sym.header.raw_lines[0] == "v {xschem version=9.9.9 file_version=2.0}"
+
+    def test_add_pin_returns_box_and_updates_pins(self):
+        sym = Symbol.new()
+        pin_box = sym.add_pin("p", "in", 10, 20)
+        assert isinstance(pin_box, Box)
+        assert len(sym.pins) == 1
+        assert sym.pins[0].name == "p"
+        assert sym.pins[0].direction == "in"
+        assert sym.pins[0].x == 10
+        assert sym.pins[0].y == 20
+
+    def test_add_text_serializes(self):
+        sym = Symbol.new()
+        sym.add_text("@name", 5, 10)
+        assert "T {@name} 5 10 0 0 0.2 0.2 {}" in sym.to_text()
+
+    def test_add_graphics_and_accessors(self):
+        sym = Symbol.new()
+        line = sym.add_line(4, 0, 0, 10, 10)
+        box = sym.add_box(4, 0, 0, 20, 10)
+        arc = sym.add_arc(4, 10, 10, 5, 0, 180)
+        polygon = sym.add_polygon(4, [(0, 0), (10, 0), (5, 5)])
+
+        # Accessor properties (inherited from mixin)
+        assert line in sym.lines
+        assert box in sym.boxes
+        assert arc in sym.arcs
+        assert polygon in sym.polygons
+
+        # Serialization
+        text = sym.to_text()
+        assert "L 4 0 0 10 10 {}" in text
+        assert "B 4 0 0 20 10 {}" in text
+        assert "A 4 10 10 5 0 180 {}" in text
+        assert "P 4 3 0 0 10 0 5 5 {}" in text
+
+    def test_texts_accessor(self):
+        sym = Symbol.new()
+        t = sym.add_text("@name", 5, 10)
+        assert t in sym.texts
+
+    def test_save_round_trip(self, tmp_path):
+        sym = Symbol.new()
+        sym.add_pin("p", "inout", 0, 0)
+        sym.add_text("@name", 5, 10)
+
+        out = tmp_path / "generated.sym"
+        sym.save(out)
+
+        reloaded = Symbol.load(out)
+        assert len(reloaded.pins) == 1
+        assert reloaded.pins[0].name == "p"
+
+    def test_save_no_path_on_new_raises(self):
+        sym = Symbol.new()
+        with pytest.raises(ValueError, match="No path"):
+            sym.save()
 
 
 class TestExports:
