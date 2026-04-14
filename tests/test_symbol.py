@@ -200,6 +200,78 @@ class TestSymbolMutation:
             sym.save()
 
 
+class TestSymbolBBox:
+    """Test bbox computation via bbox_from_elements on symbol elements."""
+
+    def test_bbox_from_lines(self):
+        from pyxschem.geometry import bbox_from_elements
+
+        sym = Symbol.new()
+        sym.add_line(4, -10, -20, 10, 20)
+        bb = bbox_from_elements(sym.elements)
+        assert bb is not None
+        assert bb.x1 == -10
+        assert bb.y1 == -20
+        assert bb.x2 == 10
+        assert bb.y2 == 20
+
+    def test_bbox_excludes_pin_layer(self):
+        from pyxschem.geometry import bbox_from_elements
+
+        sym = Symbol.new()
+        sym.add_line(4, 0, 0, 10, 10)
+        sym.add_pin("p", "in", 100, 100)  # layer 5 — should be excluded
+        bb = bbox_from_elements(sym.elements)
+        assert bb is not None
+        assert bb.x2 == 10  # not 100
+
+    def test_bbox_none_for_empty(self):
+        from pyxschem.geometry import bbox_from_elements
+
+        sym = Symbol.new()
+        assert bbox_from_elements(sym.elements) is None
+
+    def test_bbox_none_for_pins_only(self):
+        from pyxschem.geometry import bbox_from_elements
+
+        sym = Symbol.new()
+        sym.add_pin("p", "in", 10, 10)
+        assert bbox_from_elements(sym.elements) is None
+
+    def test_bbox_real_res_symbol(self):
+        from pyxschem.geometry import bbox_from_elements
+
+        sym = Symbol.load(SYM_FIXTURES / "res.sym")
+        bb = bbox_from_elements(sym.elements)
+        assert bb is not None
+        assert bb.width > 0
+        assert bb.height > 0
+
+    def test_bbox_with_arc(self):
+        from pyxschem.geometry import bbox_from_elements
+
+        sym = Symbol.new()
+        sym.add_arc(4, 50, 50, 10, 0, 360)
+        bb = bbox_from_elements(sym.elements)
+        assert bb is not None
+        assert bb.x1 == 40
+        assert bb.y1 == 40
+        assert bb.x2 == 60
+        assert bb.y2 == 60
+
+    def test_bbox_with_polygon(self):
+        from pyxschem.geometry import bbox_from_elements
+
+        sym = Symbol.new()
+        sym.add_polygon(4, [(0, 0), (10, 5), (5, 15)])
+        bb = bbox_from_elements(sym.elements)
+        assert bb is not None
+        assert bb.x1 == 0
+        assert bb.y1 == 0
+        assert bb.x2 == 10
+        assert bb.y2 == 15
+
+
 class TestExports:
     def test_import_symbol(self):
         from pyxschem import Pin, Symbol

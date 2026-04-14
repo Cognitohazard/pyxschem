@@ -28,6 +28,16 @@ class _ElementContainerMixin:
     # -- Properties --
 
     @property
+    def elements(self) -> list:
+        """All elements in this container (read-only view)."""
+        return self._elements
+
+    @property
+    def path(self) -> Path | None:
+        """File path this was loaded from, or None."""
+        return self._path
+
+    @property
     def header(self) -> Header | None:
         for e in self._elements:
             if isinstance(e, Header):

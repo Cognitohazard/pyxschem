@@ -7,6 +7,11 @@ except ModuleNotFoundError:
 
 from pyxschem.attributes import parse_attributes, serialize_attributes
 from pyxschem.cli import XschemCLI
+from pyxschem.connectivity import (
+    NetAnalyzer,
+    NetConnection,
+    connectivity_from_schematic,
+)
 from pyxschem.diff import (
     ComponentChange,
     NetChange,
@@ -14,6 +19,7 @@ from pyxschem.diff import (
     TextChange,
     diff_schematics,
 )
+from pyxschem.geometry import BBox, GeometryQuery
 from pyxschem.hierarchy import HierarchyNode
 from pyxschem.library import SymbolLibrary, XschemConfig
 from pyxschem.model import (
@@ -29,18 +35,22 @@ from pyxschem.model import (
 )
 from pyxschem.schematic import Schematic
 from pyxschem.symbol import Pin, Symbol
-from pyxschem.validate import ValidationIssue, ValidationResult, validate
+from pyxschem.validate import ValidationIssue, ValidationResult, Validator, validate
 
 __all__ = [
     "Arc",
+    "BBox",
     "Box",
     "Component",
     "ComponentChange",
+    "GeometryQuery",
     "GraphicLine",
     "Header",
     "HierarchyNode",
     "Net",
+    "NetAnalyzer",
     "NetChange",
+    "NetConnection",
     "Pin",
     "Polygon",
     "RawLine",
@@ -52,8 +62,10 @@ __all__ = [
     "TextChange",
     "ValidationIssue",
     "ValidationResult",
+    "Validator",
     "XschemCLI",
     "XschemConfig",
+    "connectivity_from_schematic",
     "diff_schematics",
     "parse_attributes",
     "serialize_attributes",

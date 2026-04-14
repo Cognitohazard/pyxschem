@@ -161,6 +161,11 @@ class Component(_AutoDirtyMixin):
         return self.attributes.get("value")
 
     @property
+    def label(self) -> str:
+        """Display label: name if set, otherwise symbol@(x,y)."""
+        return self.name or f"{self.symbol}@({self.x},{self.y})"
+
+    @property
     def position(self) -> tuple[float, float]:
         return (self.x, self.y)
 

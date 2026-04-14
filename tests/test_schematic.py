@@ -3,8 +3,10 @@
 from pathlib import Path
 
 import pytest
+from conftest import make_symbol, mock_libs
 
-from pyxschem import Component, Net, Schematic, Text
+from pyxschem import Component, Net, Schematic, Symbol, Text
+from pyxschem.geometry import BBox, GeometryQuery
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -245,3 +247,133 @@ class TestMutationRoundTrip:
         )
         with pytest.raises(ValueError, match="Text not found"):
             sch.remove_text(fake_text)
+
+
+class TestGeometryQuery:
+    def test_component_bbox_basic(self):
+        sym = make_symbol(-10, -20, 10, 20)
+        libs = mock_libs(("test.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("test.sym", x=100, y=200, attributes={"name": "U1"})
+        gq = GeometryQuery(sch, libs)
+        assert gq.component_bbox("U1") == BBox(90, 180, 110, 220)
+
+    def test_component_bbox_rotated_90(self):
+        sym = make_symbol(0, 0, 10, 20)
+        libs = mock_libs(("test.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("test.sym", x=0, y=0, rotation=1, attributes={"name": "U1"})
+        gq = GeometryQuery(sch, libs)
+        assert gq.component_bbox("U1") == BBox(-20, 0, 0, 10)
+
+    def test_component_bbox_mirrored(self):
+        sym = make_symbol(0, 0, 10, 20)
+        libs = mock_libs(("test.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("test.sym", x=0, y=0, mirror=1, attributes={"name": "U1"})
+        gq = GeometryQuery(sch, libs)
+        assert gq.component_bbox("U1") == BBox(-10, 0, 0, 20)
+
+    def test_component_bbox_not_found_raises(self):
+        libs = mock_libs()
+        sch = Schematic.new()
+        gq = GeometryQuery(sch, libs)
+        with pytest.raises(ValueError, match="not found"):
+            gq.component_bbox("X1")
+
+    def test_component_bbox_unresolvable_returns_none(self):
+        libs = mock_libs()
+        sch = Schematic.new()
+        sch.add_component("unknown.sym", x=0, y=0, attributes={"name": "U1"})
+        gq = GeometryQuery(sch, libs)
+        assert gq.component_bbox("U1") is None
+
+    def test_component_bbox_no_graphics_returns_none(self):
+        sym = Symbol.new()  # no graphic elements
+        libs = mock_libs(("test.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("test.sym", x=0, y=0, attributes={"name": "U1"})
+        gq = GeometryQuery(sch, libs)
+        assert gq.component_bbox("U1") is None
+
+    def test_component_bboxes_returns_all_named(self):
+        sym = make_symbol(0, 0, 10, 10)
+        libs = mock_libs(("test.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("test.sym", x=0, y=0, attributes={"name": "U1"})
+        sch.add_component("test.sym", x=100, y=0, attributes={"name": "U2"})
+        gq = GeometryQuery(sch, libs)
+        result = gq.component_bboxes()
+        assert "U1" in result
+        assert "U2" in result
+        assert len(result) == 2
+
+    def test_component_bboxes_skips_unnamed(self):
+        sym = make_symbol(0, 0, 10, 10)
+        libs = mock_libs(("test.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("test.sym", x=0, y=0)  # no name
+        gq = GeometryQuery(sch, libs)
+        assert len(gq.component_bboxes()) == 0
+
+    def test_component_bboxes_skips_unresolvable(self):
+        libs = mock_libs()
+        sch = Schematic.new()
+        sch.add_component("unknown.sym", x=0, y=0, attributes={"name": "U1"})
+        gq = GeometryQuery(sch, libs)
+        assert len(gq.component_bboxes()) == 0
+
+    def test_schematic_bbox_empty(self):
+        libs = mock_libs()
+        sch = Schematic.new()
+        gq = GeometryQuery(sch, libs)
+        assert gq.schematic_bbox() is None
+
+    def test_schematic_bbox_nets_only(self):
+        libs = mock_libs()
+        sch = Schematic.new()
+        sch.add_net(0, 0, 100, 0)
+        sch.add_net(50, -50, 50, 50)
+        gq = GeometryQuery(sch, libs)
+        bb = gq.schematic_bbox()
+        assert bb is not None
+        assert bb.x1 == 0
+        assert bb.y1 == -50
+        assert bb.x2 == 100
+        assert bb.y2 == 50
+
+    def test_schematic_bbox_with_components(self):
+        sym = make_symbol(-5, -5, 5, 5)
+        libs = mock_libs(("test.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("test.sym", x=50, y=50, attributes={"name": "U1"})
+        gq = GeometryQuery(sch, libs)
+        bb = gq.schematic_bbox()
+        assert bb is not None
+        assert bb.x1 <= 45
+        assert bb.y1 <= 45
+        assert bb.x2 >= 55
+        assert bb.y2 >= 55
+
+    def test_overlapping_components(self):
+        sym = make_symbol(-10, -10, 10, 10)
+        libs = mock_libs(("test.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("test.sym", x=0, y=0, attributes={"name": "U1"})
+        sch.add_component("test.sym", x=5, y=0, attributes={"name": "U2"})
+        gq = GeometryQuery(sch, libs)
+        overlaps = gq.overlapping_components()
+        assert len(overlaps) == 1
+        assert ("U1", "U2") in overlaps
+
+    def test_pin_positions(self):
+
+        sym = make_symbol(-10, -10, 10, 10)
+        sym.add_pin("A", "in", 0, 0)
+        libs = mock_libs(("test.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("test.sym", x=50, y=50, attributes={"name": "U1"})
+        gq = GeometryQuery(sch, libs)
+        pins = gq.pin_positions()
+        assert len(pins) == 1
+        assert pins[0] == (50.0, 50.0, "U1", "A")
