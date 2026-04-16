@@ -184,7 +184,10 @@ class TestNet:
 
     def test_dict_pop_auto_dirties(self):
         n = Net(
-            x1=0, y1=0, x2=100, y2=0,
+            x1=0,
+            y1=0,
+            x2=100,
+            y2=0,
             attributes={"lab": "VDD"},
             raw_line="N 0 0 100 0 {lab=VDD}",
         )
@@ -198,7 +201,10 @@ class TestNet:
 
     def test_dict_clear_auto_dirties(self):
         n = Net(
-            x1=0, y1=0, x2=100, y2=0,
+            x1=0,
+            y1=0,
+            x2=100,
+            y2=0,
             attributes={"lab": "VDD"},
             raw_line="N 0 0 100 0 {lab=VDD}",
         )
@@ -212,7 +218,10 @@ class TestNet:
 
     def test_dict_setdefault_existing_key_does_not_dirty(self):
         n = Net(
-            x1=0, y1=0, x2=100, y2=0,
+            x1=0,
+            y1=0,
+            x2=100,
+            y2=0,
             attributes={"lab": "VDD"},
             raw_line="N 0 0 100 0 {lab=VDD}",
         )

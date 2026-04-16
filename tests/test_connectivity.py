@@ -75,10 +75,16 @@ class TestParseSpiceNetlist:
 class TestConnectivityFromSchematic:
     def test_simple_net_label_connection(self):
         """Two components sharing the same net label are connected."""
-        sym = make_symbol(-5, -5, 5, 5, pins=[
-            Pin(name="P", direction="inout", x=0, y=-20),
-            Pin(name="N", direction="inout", x=0, y=20),
-        ])
+        sym = make_symbol(
+            -5,
+            -5,
+            5,
+            5,
+            pins=[
+                Pin(name="P", direction="inout", x=0, y=-20),
+                Pin(name="N", direction="inout", x=0, y=20),
+            ],
+        )
         libs = mock_libs(("res.sym", sym))
 
         sch = Schematic.new()
@@ -98,9 +104,15 @@ class TestConnectivityFromSchematic:
 
     def test_endpoint_sharing(self):
         """Two nets sharing an endpoint position are on the same net."""
-        sym = make_symbol(-5, -5, 5, 5, pins=[
-            Pin(name="P", direction="inout", x=0, y=0),
-        ])
+        sym = make_symbol(
+            -5,
+            -5,
+            5,
+            5,
+            pins=[
+                Pin(name="P", direction="inout", x=0, y=0),
+            ],
+        )
         libs = mock_libs(("res.sym", sym))
 
         sch = Schematic.new()
@@ -123,9 +135,15 @@ class TestConnectivityFromSchematic:
 
     def test_disconnected_components(self):
         """Components with no shared nets or labels are separate."""
-        sym = make_symbol(-5, -5, 5, 5, pins=[
-            Pin(name="P", direction="inout", x=0, y=0),
-        ])
+        sym = make_symbol(
+            -5,
+            -5,
+            5,
+            5,
+            pins=[
+                Pin(name="P", direction="inout", x=0, y=0),
+            ],
+        )
         libs = mock_libs(("res.sym", sym))
 
         sch = Schematic.new()
@@ -140,9 +158,15 @@ class TestConnectivityFromSchematic:
 
     def test_auto_naming_for_unlabeled(self):
         """Unlabeled nets get auto-generated names."""
-        sym = make_symbol(-5, -5, 5, 5, pins=[
-            Pin(name="P", direction="inout", x=0, y=0),
-        ])
+        sym = make_symbol(
+            -5,
+            -5,
+            5,
+            5,
+            pins=[
+                Pin(name="P", direction="inout", x=0, y=0),
+            ],
+        )
         libs = mock_libs(("res.sym", sym))
 
         sch = Schematic.new()

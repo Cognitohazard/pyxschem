@@ -247,7 +247,10 @@ class TestUnintendedJunction:
 class TestPinCollision:
     def test_wire_through_pin(self):
         sym = make_symbol(
-            -10, -10, 10, 10,
+            -10,
+            -10,
+            10,
+            10,
             pins=[Pin(name="A", direction="in", x=0, y=0)],
         )
         libs = mock_libs(("test.sym", sym))
@@ -263,7 +266,10 @@ class TestPinCollision:
 
     def test_wire_endpoint_at_pin_ok(self):
         sym = make_symbol(
-            -10, -10, 10, 10,
+            -10,
+            -10,
+            10,
+            10,
             pins=[Pin(name="A", direction="in", x=0, y=0)],
         )
         libs = mock_libs(("test.sym", sym))

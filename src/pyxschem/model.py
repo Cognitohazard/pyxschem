@@ -7,6 +7,7 @@ to_line() returns raw_line if unmodified, regenerates from fields if dirty.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 from pyxschem.attributes import serialize_attributes
@@ -77,6 +78,8 @@ class _AutoDirtyMixin:
 
 def _fmt_num(v: float) -> str:
     """Format a number: 300.0 → '300', 63.75 → '63.75'."""
+    if not math.isfinite(v):
+        return format(v, ".10g")
     if v == int(v):
         return str(int(v))
     return format(v, ".10g")
@@ -222,9 +225,8 @@ class Text(_AutoDirtyMixin):
         return (
             f"T {{{self.text}}} {_fmt_num(self.x)} {_fmt_num(self.y)}"
             f" {self.rotation} {self.mirror}"
-            f" {self.xscale} {self.yscale} {attrs}"
+            f" {_fmt_num(self.xscale)} {_fmt_num(self.yscale)} {attrs}"
         )
-
 
 
 @dataclass
@@ -252,7 +254,6 @@ class GraphicLine(_AutoDirtyMixin):
         )
 
 
-
 @dataclass
 class Box(_AutoDirtyMixin):
     """A graphical box/rectangle (B line).
@@ -276,7 +277,6 @@ class Box(_AutoDirtyMixin):
             f"B {self.layer} {_fmt_num(self.x1)} {_fmt_num(self.y1)}"
             f" {_fmt_num(self.x2)} {_fmt_num(self.y2)} {attrs}"
         )
-
 
 
 @dataclass
@@ -306,7 +306,6 @@ class Arc(_AutoDirtyMixin):
         )
 
 
-
 @dataclass
 class Polygon(_AutoDirtyMixin):
     """A polygon (P line).
@@ -325,7 +324,6 @@ class Polygon(_AutoDirtyMixin):
         coords = " ".join(f"{_fmt_num(x)} {_fmt_num(y)}" for x, y in self.points)
         attrs = serialize_attributes(self.attributes)
         return f"P {self.layer} {len(self.points)} {coords} {attrs}"
-
 
 
 @dataclass

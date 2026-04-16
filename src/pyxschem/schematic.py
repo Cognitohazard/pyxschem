@@ -31,9 +31,7 @@ class Schematic(_ElementContainerMixin):
         sch.save("amplifier_modified.sch")
     """
 
-    def _make_default_header(
-        self, version: str, file_version: str
-    ) -> Header:
+    def _make_default_header(self, version: str, file_version: str) -> Header:
         return Header.default_schematic(version, file_version)
 
     def __init__(self, elements: list[Element], path: Path | None = None) -> None:

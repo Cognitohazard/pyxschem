@@ -153,7 +153,13 @@ def _brace_depth(line: str, in_quote: bool) -> tuple[int, bool]:
         (depth_change, in_quote_after) — net brace depth and quote state.
     """
     depth = 0
-    for ch in line:
+    i = 0
+    n = len(line)
+    while i < n:
+        ch = line[i]
+        if in_quote and ch == "\\" and i + 1 < n:
+            i += 2  # Skip escaped character inside quoted string
+            continue
         if ch == '"':
             in_quote = not in_quote
         elif not in_quote:
@@ -161,6 +167,7 @@ def _brace_depth(line: str, in_quote: bool) -> tuple[int, bool]:
                 depth += 1
             elif ch == "}":
                 depth -= 1
+        i += 1
     return depth, in_quote
 
 
