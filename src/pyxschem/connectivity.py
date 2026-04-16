@@ -29,7 +29,6 @@ class NetConnection:
     """List of (component_name, pin_name) tuples."""
 
 
-
 def connectivity_from_netlist(path: str | Path) -> list[NetConnection]:
     """Parse a SPICE netlist to extract net-to-pin connectivity.
 
@@ -323,9 +322,7 @@ class NetAnalyzer:
         self._nets = connectivity_from_schematic(self._sch, self._libs)
         return self._nets
 
-    def net_for_pin(
-        self, comp_name: str, pin_name: str
-    ) -> NetConnection | None:
+    def net_for_pin(self, comp_name: str, pin_name: str) -> NetConnection | None:
         """Find the net a specific component pin is on (O(1) lookup)."""
         if self._pin_index is None:
             self._pin_index = {}

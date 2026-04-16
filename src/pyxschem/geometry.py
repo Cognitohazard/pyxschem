@@ -101,7 +101,6 @@ class BBox:
         return result
 
 
-
 def transform_point(
     px: float,
     py: float,
@@ -163,7 +162,6 @@ def transform_bbox(
     return BBox(min(xs), min(ys), max(xs), max(ys))
 
 
-
 def bbox_from_elements(elements: Sequence[Element]) -> BBox | None:
     """Compute the AABB enclosing a list of graphic elements.
 
@@ -195,7 +193,6 @@ def bbox_from_elements(elements: Sequence[Element]) -> BBox | None:
         return None
 
     return BBox(min(xs), min(ys), max(xs), max(ys))
-
 
 
 def point_on_segment(
@@ -324,7 +321,6 @@ def segments_intersect(
     return None
 
 
-
 class GeometryQuery:
     """Spatial query interface for a schematic and its symbols.
 
@@ -376,10 +372,14 @@ class GeometryQuery:
 
         # Net endpoints
         for n in self._sch.nets:
-            bboxes.append(BBox(
-                min(n.x1, n.x2), min(n.y1, n.y2),
-                max(n.x1, n.x2), max(n.y1, n.y2),
-            ))
+            bboxes.append(
+                BBox(
+                    min(n.x1, n.x2),
+                    min(n.y1, n.y2),
+                    max(n.x1, n.x2),
+                    max(n.y1, n.y2),
+                )
+            )
 
         # Text positions
         for t in self._sch.texts:

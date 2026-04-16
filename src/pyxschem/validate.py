@@ -52,7 +52,6 @@ class ValidationResult:
         return all(i.severity != "error" for i in self.issues)
 
 
-
 class Validator:
     """Validates a schematic for common design errors.
 
@@ -105,25 +104,29 @@ class Validator:
         """
         warnings: list[ValidationIssue] = []
         if x1 != x2 and y1 != y2:
-            warnings.append(ValidationIssue(
-                severity="warning",
-                category="diagonal_wire",
-                message=(
-                    f"Net ({x1},{y1})-({x2},{y2}) is diagonal"
-                    " — xschem wires are typically orthogonal"
-                ),
-                element=None,
-            ))
+            warnings.append(
+                ValidationIssue(
+                    severity="warning",
+                    category="diagonal_wire",
+                    message=(
+                        f"Net ({x1},{y1})-({x2},{y2}) is diagonal"
+                        " — xschem wires are typically orthogonal"
+                    ),
+                    element=None,
+                )
+            )
         if x1 == x2 and y1 == y2 and not label:
-            warnings.append(ValidationIssue(
-                severity="warning",
-                category="zero_length_net",
-                message=(
-                    f"Zero-length net at ({x1},{y1}) with no label"
-                    " — may be unintentional"
-                ),
-                element=None,
-            ))
+            warnings.append(
+                ValidationIssue(
+                    severity="warning",
+                    category="zero_length_net",
+                    message=(
+                        f"Zero-length net at ({x1},{y1}) with no label"
+                        " — may be unintentional"
+                    ),
+                    element=None,
+                )
+            )
         return warnings
 
     # -- internal checks --
@@ -145,27 +148,31 @@ class Validator:
         for name, comps in sorted(by_name.items()):
             if len(comps) > 1:
                 for c in comps:
-                    issues.append(ValidationIssue(
-                        severity="error",
-                        category="duplicate_name",
-                        message=f"Duplicate component name '{name}'",
-                        element=c,
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            severity="error",
+                            category="duplicate_name",
+                            message=f"Duplicate component name '{name}'",
+                            element=c,
+                        )
+                    )
         return issues
 
     def _check_missing_names(self) -> list[ValidationIssue]:
         issues = []
         for c in self._sch.components:
             if not c.name:
-                issues.append(ValidationIssue(
-                    severity="warning",
-                    category="missing_name",
-                    message=(
-                        f"Component with symbol '{c.symbol}'"
-                        f" at ({c.x}, {c.y}) has no name"
-                    ),
-                    element=c,
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="warning",
+                        category="missing_name",
+                        message=(
+                            f"Component with symbol '{c.symbol}'"
+                            f" at ({c.x}, {c.y}) has no name"
+                        ),
+                        element=c,
+                    )
+                )
         return issues
 
     def _check_floating_nets(self) -> list[ValidationIssue]:
@@ -188,15 +195,17 @@ class Validator:
                 if endpoint_count[point] >= 2:
                     continue
                 checked_nets.add(net_id)
-                issues.append(ValidationIssue(
-                    severity="warning",
-                    category="floating_net",
-                    message=(
-                        f"Net endpoint ({x}, {y}) is not connected"
-                        " to any component or other net"
-                    ),
-                    element=n,
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="warning",
+                        category="floating_net",
+                        message=(
+                            f"Net endpoint ({x}, {y}) is not connected"
+                            " to any component or other net"
+                        ),
+                        element=n,
+                    )
+                )
                 break
         return issues
 
@@ -208,9 +217,7 @@ class Validator:
         for i, a in enumerate(nets):
             for j in range(i + 1, len(nets)):
                 b = nets[j]
-                pt = segments_intersect(
-                    a.x1, a.y1, a.x2, a.y2, b.x1, b.y1, b.x2, b.y2
-                )
+                pt = segments_intersect(a.x1, a.y1, a.x2, a.y2, b.x1, b.y1, b.x2, b.y2)
                 if pt is None:
                     continue
                 ix, iy = pt
@@ -218,20 +225,20 @@ class Validator:
                 b_endpoints = {(b.x1, b.y1), (b.x2, b.y2)}
                 if (ix, iy) in a_endpoints and (ix, iy) in b_endpoints:
                     continue
-                issues.append(ValidationIssue(
-                    severity="warning",
-                    category="unintended_junction",
-                    message=(
-                        f"Nets cross at ({ix},{iy}) without a shared endpoint"
-                        " — may be an unintended junction"
-                    ),
-                    element=a,
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="warning",
+                        category="unintended_junction",
+                        message=(
+                            f"Nets cross at ({ix},{iy}) without a shared endpoint"
+                            " — may be an unintended junction"
+                        ),
+                        element=a,
+                    )
+                )
         return issues
 
-    def _check_unconnected_pins(
-        self, gq: GeometryQuery
-    ) -> list[ValidationIssue]:
+    def _check_unconnected_pins(self, gq: GeometryQuery) -> list[ValidationIssue]:
         net_points: set[tuple[float, float]] = set()
         for n in self._sch.nets:
             net_points.add((n.x1, n.y1))
@@ -240,20 +247,20 @@ class Validator:
         issues = []
         for px, py, comp_label, pin_name in gq.pin_positions():
             if (px, py) not in net_points:
-                issues.append(ValidationIssue(
-                    severity="warning",
-                    category="unconnected_pin",
-                    message=(
-                        f"Pin '{pin_name}' of '{comp_label}'"
-                        f" at ({px}, {py}) has no net"
-                    ),
-                    element=None,
-                ))
+                issues.append(
+                    ValidationIssue(
+                        severity="warning",
+                        category="unconnected_pin",
+                        message=(
+                            f"Pin '{pin_name}' of '{comp_label}'"
+                            f" at ({px}, {py}) has no net"
+                        ),
+                        element=None,
+                    )
+                )
         return issues
 
-    def _check_wire_crosses_body(
-        self, gq: GeometryQuery
-    ) -> list[ValidationIssue]:
+    def _check_wire_crosses_body(self, gq: GeometryQuery) -> list[ValidationIssue]:
         from pyxschem.geometry import segment_crosses_bbox
 
         issues = []
@@ -265,20 +272,20 @@ class Validator:
                 if any(bbox.contains_point(x, y) for x, y in endpoints):
                     continue
                 if segment_crosses_bbox(net.x1, net.y1, net.x2, net.y2, bbox):
-                    issues.append(ValidationIssue(
-                        severity="warning",
-                        category="wire_crosses_body",
-                        message=(
-                            f"Net ({net.x1},{net.y1})-({net.x2},{net.y2})"
-                            f" passes through component '{comp_name}'"
-                        ),
-                        element=net,
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            severity="warning",
+                            category="wire_crosses_body",
+                            message=(
+                                f"Net ({net.x1},{net.y1})-({net.x2},{net.y2})"
+                                f" passes through component '{comp_name}'"
+                            ),
+                            element=net,
+                        )
+                    )
         return issues
 
-    def _check_pin_collisions(
-        self, gq: GeometryQuery
-    ) -> list[ValidationIssue]:
+    def _check_pin_collisions(self, gq: GeometryQuery) -> list[ValidationIssue]:
         from pyxschem.geometry import point_on_segment
 
         issues = []
@@ -288,34 +295,35 @@ class Validator:
                 if (px, py) in endpoints:
                     continue
                 if point_on_segment(px, py, net.x1, net.y1, net.x2, net.y2):
-                    issues.append(ValidationIssue(
-                        severity="warning",
-                        category="pin_collision",
-                        message=(
-                            f"Net ({net.x1},{net.y1})-({net.x2},{net.y2})"
-                            f" passes through pin '{pin_name}'"
-                            f" of '{comp_label}' at ({px},{py})"
-                        ),
-                        element=net,
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            severity="warning",
+                            category="pin_collision",
+                            message=(
+                                f"Net ({net.x1},{net.y1})-({net.x2},{net.y2})"
+                                f" passes through pin '{pin_name}'"
+                                f" of '{comp_label}' at ({px},{py})"
+                            ),
+                            element=net,
+                        )
+                    )
         return issues
 
-    def _check_component_overlap(
-        self, gq: GeometryQuery
-    ) -> list[ValidationIssue]:
+    def _check_component_overlap(self, gq: GeometryQuery) -> list[ValidationIssue]:
         issues = []
         for name_a, name_b in gq.overlapping_components():
-            issues.append(ValidationIssue(
-                severity="warning",
-                category="component_overlap",
-                message=(
-                    f"Components '{name_a}' and '{name_b}'"
-                    " have overlapping bounding boxes"
-                ),
-                element=None,
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="warning",
+                    category="component_overlap",
+                    message=(
+                        f"Components '{name_a}' and '{name_b}'"
+                        " have overlapping bounding boxes"
+                    ),
+                    element=None,
+                )
+            )
         return issues
-
 
 
 def validate(

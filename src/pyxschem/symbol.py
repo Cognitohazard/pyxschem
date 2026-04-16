@@ -43,9 +43,7 @@ class Symbol(_ElementContainerMixin):
         sym.template    # {"name": "R1", "value": "1k", ...}
     """
 
-    def _make_default_header(
-        self, version: str, file_version: str
-    ) -> Header:
+    def _make_default_header(self, version: str, file_version: str) -> Header:
         return Header.default_symbol(version, file_version)
 
     def __init__(self, elements: list[Element], path: Path | None = None) -> None:

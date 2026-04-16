@@ -124,7 +124,11 @@ def serialize_attributes(attrs: dict[str, str]) -> str:
         if not value:
             pairs.append(key)
         elif _needs_quoting(value):
-            pairs.append(f"{key}={{{value}}}")
+            if _braces_balanced(value):
+                pairs.append(f"{key}={{{value}}}")
+            else:
+                escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+                pairs.append(f'{key}="{escaped}"')
         else:
             pairs.append(f"{key}={value}")
 
@@ -132,5 +136,18 @@ def serialize_attributes(attrs: dict[str, str]) -> str:
 
 
 def _needs_quoting(value: str) -> bool:
-    """Check if a value needs brace quoting."""
+    """Check if a value needs brace or double quoting."""
     return any(ch in ' \t\n\r{}"=' for ch in value)
+
+
+def _braces_balanced(value: str) -> bool:
+    """Check if braces are balanced in a value string."""
+    depth = 0
+    for ch in value:
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth < 0:
+                return False
+    return depth == 0

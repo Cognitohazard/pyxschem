@@ -20,9 +20,7 @@ class _ElementContainerMixin:
     _elements: list  # list[Element]
     _path: Path | None
 
-    def _make_default_header(
-        self, version: str, file_version: str
-    ) -> Header:
+    def _make_default_header(self, version: str, file_version: str) -> Header:
         raise NotImplementedError
 
     # -- Properties --
@@ -71,9 +69,7 @@ class _ElementContainerMixin:
         v_line = f"v {{xschem version={version} file_version={file_version}}}"
         header = self.header
         if header is None:
-            self._elements.insert(
-                0, self._make_default_header(version, file_version)
-            )
+            self._elements.insert(0, self._make_default_header(version, file_version))
             return
         for i, line in enumerate(header.raw_lines):
             if line.startswith("v "):
@@ -153,9 +149,7 @@ class _ElementContainerMixin:
         attributes: dict[str, str] | None = None,
     ) -> Polygon:
         """Add a polygon."""
-        item = Polygon(
-            layer=layer, points=list(points), attributes=attributes or {}
-        )
+        item = Polygon(layer=layer, points=list(points), attributes=attributes or {})
         self._elements.append(item)
         return item
 
@@ -172,9 +166,7 @@ class _ElementContainerMixin:
         elif self._path is not None:
             p = self._path
         else:
-            raise ValueError(
-                "No path specified and file was not loaded from disk"
-            )
+            raise ValueError("No path specified and file was not loaded from disk")
         original_mode = None
         if p.exists():
             original_mode = stat.S_IMODE(os.stat(p).st_mode)
