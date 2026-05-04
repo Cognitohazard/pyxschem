@@ -141,18 +141,19 @@ class TestPinPosition:
 
 
 class TestConnect:
-    def test_connect_creates_labeled_net(self):
+    def test_connect_places_lab_pin_at_target(self):
         libs = SymbolLibrary([HIER_FIXTURES])
         sch = Schematic.from_text(
             "v {xschem version=3.4.5 file_version=1.2}\n"
             "G {}\nK {}\nV {}\nS {}\nE {}\n"
             "C {resistor.sym} 200 -100 0 0 {name=R1 value=10k}\n"
         )
-        net = sch.connect("R1", "P", "VDD", libs)
-        assert net.label == "VDD"
-        assert net.x1 == 200.0
-        assert net.y1 == -130.0
-        assert len(sch.nets) == 1
+        before = len(sch.components)
+        comp = sch.connect("R1", "P", "VDD", libs)
+        assert comp.symbol == "lab_pin.sym"
+        assert comp.attributes.get("lab") == "VDD"
+        assert (comp.x, comp.y) == (200, -130)
+        assert len(sch.components) == before + 1
 
     def test_connect_missing_component(self):
         libs = SymbolLibrary([HIER_FIXTURES])
@@ -170,15 +171,165 @@ class TestConnect:
         with pytest.raises(ValueError, match="Pin 'Z' not found"):
             sch.connect("R1", "Z", "VDD", libs)
 
-    def test_connect_multiple_pins(self):
+    def test_connect_multiple_pins_unique_names(self):
         libs = SymbolLibrary([HIER_FIXTURES])
         sch = Schematic.from_text(
             "v {xschem version=3.4.5 file_version=1.2}\n"
             "G {}\nK {}\nV {}\nS {}\nE {}\n"
             "C {resistor.sym} 200 -100 0 0 {name=R1 value=10k}\n"
         )
-        sch.connect("R1", "P", "VDD", libs)
-        sch.connect("R1", "M", "GND", libs)
-        assert len(sch.nets) == 2
-        labels = sorted(n.label for n in sch.nets)
-        assert labels == ["GND", "VDD"]
+        a = sch.connect("R1", "P", "VDD", libs)
+        b = sch.connect("R1", "M", "GND", libs)
+        labs = [c for c in sch.components if c.symbol == "lab_pin.sym"]
+        assert len(labs) == 2
+        assert {c.attributes.get("lab") for c in labs} == {"GND", "VDD"}
+        # Auto-generated names must be unique
+        assert a.name != b.name
+
+
+class TestPinErrorMessages:
+    def test_case_insensitive_suggestion(self):
+        libs = SymbolLibrary([HIER_FIXTURES])
+        sch = Schematic.from_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\nK {}\nV {}\nS {}\nE {}\n"
+            "C {resistor.sym} 200 -100 0 0 {name=R1 value=10k}\n"
+        )
+        with pytest.raises(ValueError, match="did you mean 'P'"):
+            sch.pin_position("R1", "p", libs)
+
+    def test_error_includes_rotation(self):
+        libs = SymbolLibrary([HIER_FIXTURES])
+        sch = Schematic.from_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\nK {}\nV {}\nS {}\nE {}\n"
+            "C {resistor.sym} 200 -100 1 0 {name=R1 value=10k}\n"
+        )
+        with pytest.raises(ValueError, match="rotation=1"):
+            sch.pin_position("R1", "ZZZ", libs)
+
+
+class TestAddWire:
+    def test_horizontal_wire_between_pins(self):
+        libs = SymbolLibrary([HIER_FIXTURES])
+        sch = Schematic.from_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\nK {}\nV {}\nS {}\nE {}\n"
+            "C {resistor.sym} 200 -100 1 0 {name=R1 value=10k}\n"
+            "C {resistor.sym} 400 -100 1 0 {name=R2 value=10k}\n"
+        )
+        net = sch.add_wire("R1", "P", "R2", "M", libs)
+        assert net.x1 != net.x2 or net.y1 != net.y2
+        assert net.y1 == net.y2  # horizontal
+
+    def test_diagonal_pins_rejected(self):
+        libs = SymbolLibrary([HIER_FIXTURES])
+        sch = Schematic.from_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\nK {}\nV {}\nS {}\nE {}\n"
+            "C {resistor.sym} 200 -100 0 0 {name=R1}\n"
+            "C {resistor.sym} 400 -300 0 0 {name=R2}\n"
+        )
+        with pytest.raises(ValueError, match="orthogonally aligned"):
+            sch.add_wire("R1", "P", "R2", "M", libs)
+
+
+class TestAddLabelPinAlias:
+    def test_alias_creates_lab_pin(self):
+        libs = SymbolLibrary([HIER_FIXTURES])
+        sch = Schematic.from_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\nK {}\nV {}\nS {}\nE {}\n"
+            "C {resistor.sym} 200 -100 0 0 {name=R1 value=10k}\n"
+        )
+        comp = sch.add_label_pin("R1", "P", "VDD", libs)
+        assert comp.symbol.endswith("lab_pin.sym")
+        assert comp.attributes.get("lab") == "VDD"
+
+
+class TestConnectLabPinResolution:
+    def test_no_lab_pin_in_library_raises(self, tmp_path):
+        # SymbolLibrary that contains a resistor but no lab_pin → must raise.
+        lib_dir = tmp_path / "lib_only_res"
+        lib_dir.mkdir()
+        (lib_dir / "res.sym").write_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\n"
+            "K {type=resistor template=\"name=R1 value=1k\"}\n"
+            "V {}\nS {}\nE {}\n"
+            "B 5 -2.5 -32.5 2.5 -27.5 {name=P dir=inout}\n"
+            "B 5 -2.5 27.5 2.5 32.5 {name=M dir=inout}\n"
+        )
+        libs = SymbolLibrary([lib_dir])
+        sch = Schematic.new()
+        sch.add_component("res.sym", 100, -100,
+                           attributes={"name": "R1", "value": "1k"})
+        with pytest.raises(ValueError, match="lab_pin"):
+            sch.connect("R1", "P", "VDD", libs)
+
+    def test_fractional_pin_coordinate_preserved(self):
+        libs = SymbolLibrary([HIER_FIXTURES])
+        sch = Schematic.new()
+        # Component anchor at fractional coordinates → lab_pin must
+        # land exactly on the pin, not be truncated to int.
+        sch.add_component("resistor.sym", 102.5, -107.5,
+                           attributes={"name": "R1", "value": "1k"})
+        comp = sch.connect("R1", "P", "VDD", libs)
+        # resistor.sym pin P is at (0, -30); anchor (102.5, -107.5) +
+        # rotation 0 → (102.5, -137.5).
+        assert (comp.x, comp.y) == (102.5, -137.5)
+
+
+class TestCaseInsensitivePinLookup:
+    def test_off_case_resolves_when_opted_in(self):
+        libs = SymbolLibrary([HIER_FIXTURES])
+        sch = Schematic.from_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\nK {}\nV {}\nS {}\nE {}\n"
+            "C {resistor.sym} 200 -100 0 0 {name=R1 value=10k}\n"
+        )
+        # resistor.sym uses uppercase P/M.
+        pos = sch.pin_position("R1", "p", libs, case_insensitive=True)
+        assert pos == (200, -130)
+
+    def test_off_case_rejected_by_default(self):
+        libs = SymbolLibrary([HIER_FIXTURES])
+        sch = Schematic.from_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\nK {}\nV {}\nS {}\nE {}\n"
+            "C {resistor.sym} 200 -100 0 0 {name=R1 value=10k}\n"
+        )
+        with pytest.raises(ValueError, match="did you mean 'P'"):
+            sch.pin_position("R1", "p", libs)
+
+    def test_case_insensitive_propagates_to_connect(self):
+        libs = SymbolLibrary([HIER_FIXTURES])
+        sch = Schematic.from_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\nK {}\nV {}\nS {}\nE {}\n"
+            "C {resistor.sym} 200 -100 0 0 {name=R1 value=10k}\n"
+        )
+        comp = sch.connect("R1", "p", "VDD", libs, case_insensitive=True)
+        assert comp.attributes.get("lab") == "VDD"
+
+    def test_case_insensitive_propagates_to_add_wire(self):
+        libs = SymbolLibrary([HIER_FIXTURES])
+        sch = Schematic.from_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\nK {}\nV {}\nS {}\nE {}\n"
+            "C {resistor.sym} 200 -100 0 0 {name=R1}\n"
+            "C {resistor.sym} 400 -100 0 0 {name=R2}\n"
+        )
+        net = sch.add_wire("R1", "p", "R2", "p", libs,
+                            case_insensitive=True)
+        assert net.y1 == net.y2
+
+    def test_pin_error_includes_rotation(self):
+        libs = SymbolLibrary([HIER_FIXTURES])
+        sch = Schematic.from_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\nK {}\nV {}\nS {}\nE {}\n"
+            "C {resistor.sym} 200 -100 1 0 {name=R1 value=10k}\n"
+        )
+        with pytest.raises(ValueError, match="rotation=1"):
+            sch.pin_position("R1", "ZZZ", libs)

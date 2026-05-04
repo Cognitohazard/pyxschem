@@ -5,7 +5,15 @@ from pathlib import Path
 import pytest
 from conftest import make_symbol, mock_libs
 
-from pyxschem import Component, Net, Schematic, Symbol, Text
+from pyxschem import (
+    BomEntry,
+    Component,
+    Net,
+    Schematic,
+    SubcircuitPort,
+    Symbol,
+    Text,
+)
 from pyxschem.geometry import BBox, GeometryQuery
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -377,3 +385,332 @@ class TestGeometryQuery:
         pins = gq.pin_positions()
         assert len(pins) == 1
         assert pins[0] == (50.0, 50.0, "U1", "A")
+
+
+# ---------------------------------------------------------------------------
+# K-block / subcircuit metadata
+# ---------------------------------------------------------------------------
+
+class TestSubcircuitMetadata:
+    def test_k_attributes_default_empty(self):
+        sch = Schematic.new()
+        assert sch.k_attributes() == {}
+
+    def test_set_subcircuit_metadata_writes_type_format_template(self):
+        sch = Schematic.new()
+        sch.set_subcircuit_metadata(
+            format="@name @pinlist @symname",
+            template="name=X1 m=1",
+        )
+        attrs = sch.k_attributes()
+        assert attrs["type"] == "subcircuit"
+        assert "@pinlist" in attrs["format"]
+        assert "name=X1" in attrs["template"]
+
+    def test_set_subcircuit_metadata_round_trips(self, tmp_path):
+        sch = Schematic.new()
+        sch.set_subcircuit_metadata(format="@name @pinlist @symname")
+        out = tmp_path / "sub.sch"
+        sch.save(out)
+        again = Schematic.load(out)
+        assert again.k_attributes()["type"] == "subcircuit"
+
+    def test_set_subcircuit_metadata_preserves_existing_keys(self):
+        sch = Schematic.new()
+        sch.set_subcircuit_metadata(format="A")
+        sch.set_subcircuit_metadata(template="B")
+        attrs = sch.k_attributes()
+        assert attrs["format"] == "A"
+        assert attrs["template"] == "B"
+
+    def test_set_subcircuit_metadata_extra_kwargs(self):
+        sch = Schematic.new()
+        sch.set_subcircuit_metadata(format="A", function0="1 ~")
+        assert sch.k_attributes()["function0"] == "1 ~"
+
+
+class TestSubcircuitPorts:
+    def test_empty_when_no_ports(self):
+        sch = Schematic.new()
+        sch.add_component("res.sym", 0, 0, attributes={"name": "R1"})
+        assert sch.subcircuit_ports() == []
+
+    def test_basename_form(self):
+        sch = Schematic.new()
+        sch.add_component("ipin.sym", 100, -200,
+                           attributes={"name": "p1", "lab": "IN"})
+        sch.add_component("opin.sym", 500, -200,
+                           attributes={"name": "p2", "lab": "OUT"})
+        ports = sch.subcircuit_ports()
+        assert [p.direction for p in ports] == ["in", "out"]
+        assert [p.name for p in ports] == ["IN", "OUT"]
+
+    def test_subpath_form(self):
+        sch = Schematic.new()
+        sch.add_component("devices/ipin.sym", 0, 0,
+                           attributes={"name": "p1", "lab": "A"})
+        sch.add_component("devices/opin.sym", 100, 0,
+                           attributes={"name": "p2", "lab": "Z"})
+        sch.add_component("devices/iopin.sym", 50, 0,
+                           attributes={"name": "p3", "lab": "BIDIR"})
+        ports = sch.subcircuit_ports()
+        assert [p.direction for p in ports] == ["in", "out", "inout"]
+        assert [p.name for p in ports] == ["A", "Z", "BIDIR"]
+
+    def test_returns_subcircuitport_instances(self):
+        sch = Schematic.new()
+        sch.add_component("ipin.sym", 50, -50,
+                           attributes={"name": "p1", "lab": "X"})
+        port = sch.subcircuit_ports()[0]
+        assert isinstance(port, SubcircuitPort)
+        assert (port.x, port.y) == (50, -50)
+
+    def test_skips_components_without_lab(self):
+        sch = Schematic.new()
+        sch.add_component("ipin.sym", 0, 0, attributes={"name": "p1"})
+        assert sch.subcircuit_ports() == []
+
+    def test_preserves_declaration_order(self):
+        sch = Schematic.new()
+        sch.add_component("opin.sym", 0, 0,
+                           attributes={"name": "p1", "lab": "Z"})
+        sch.add_component("ipin.sym", 0, 0,
+                           attributes={"name": "p2", "lab": "A"})
+        sch.add_component("ipin.sym", 0, 0,
+                           attributes={"name": "p3", "lab": "B"})
+        assert [p.name for p in sch.subcircuit_ports()] == ["Z", "A", "B"]
+
+
+# ---------------------------------------------------------------------------
+# Refactor primitives
+# ---------------------------------------------------------------------------
+
+def _make_two_resistors() -> Schematic:
+    sch = Schematic.new()
+    sch.add_component("res.sym", 100, -100,
+                       attributes={"name": "R1", "value": "1k"})
+    sch.add_component("res.sym", 200, -100,
+                       attributes={"name": "R2", "value": "2k"})
+    return sch
+
+
+class TestSetComponentAttributes:
+    def test_sets_multiple_keys(self):
+        sch = _make_two_resistors()
+        sch.set_component_attributes("R1", w="2u", l="0.18u", m="4")
+        r1 = sch.get_component("R1")
+        assert r1.attributes["w"] == "2u"
+        assert r1.attributes["l"] == "0.18u"
+        assert r1.attributes["m"] == "4"
+
+    def test_unknown_component_raises(self):
+        sch = _make_two_resistors()
+        with pytest.raises(ValueError, match="not found"):
+            sch.set_component_attributes("NOPE", x="1")
+
+    def test_no_kwargs_is_noop(self):
+        sch = _make_two_resistors()
+        before = dict(sch.get_component("R1").attributes)
+        sch.set_component_attributes("R1")
+        assert dict(sch.get_component("R1").attributes) == before
+
+
+class TestBulkUpdate:
+    def test_predicate_filters(self):
+        sch = _make_two_resistors()
+        n = sch.bulk_update(
+            lambda c: c.attributes.get("value") == "1k",
+            lambda c: c.set_attribute("tol", "1%"),
+        )
+        assert n == 1
+        assert sch.get_component("R1").attributes.get("tol") == "1%"
+        assert "tol" not in sch.get_component("R2").attributes
+
+    def test_counts_all_matches(self):
+        sch = _make_two_resistors()
+        n = sch.bulk_update(
+            lambda c: c.symbol == "res.sym",
+            lambda c: c.set_attribute("m", "1"),
+        )
+        assert n == 2
+
+
+class TestTransformComponents:
+    def test_attrs_writes_literal(self):
+        sch = _make_two_resistors()
+        n = sch.transform_components(symbol="res.sym",
+                                      attrs={"footprint": "0805"})
+        assert n == 2
+        for r in (sch.get_component("R1"), sch.get_component("R2")):
+            assert r.attributes["footprint"] == "0805"
+
+    def test_attr_remap_only_remaps_known_values(self):
+        sch = _make_two_resistors()
+        # Both R1 and R2 should match by symbol; remap touches only "1k".
+        n = sch.transform_components(
+            symbol="res.sym",
+            attr_remap={"value": {"1k": "1.1k"}},
+        )
+        assert n == 1
+        assert sch.get_component("R1").attributes["value"] == "1.1k"
+        assert sch.get_component("R2").attributes["value"] == "2k"
+
+    def test_no_op_remap_returns_zero(self):
+        sch = _make_two_resistors()
+        n = sch.transform_components(
+            symbol="res.sym",
+            attr_remap={"value": {"NEVER": "ALSO_NEVER"}},
+        )
+        assert n == 0
+
+    def test_idempotent_retry_is_zero(self):
+        sch = _make_two_resistors()
+        sch.transform_components(symbol="res.sym",
+                                  attr_remap={"value": {"1k": "9k"}})
+        n2 = sch.transform_components(symbol="res.sym",
+                                       attr_remap={"value": {"1k": "9k"}})
+        assert n2 == 0
+
+    def test_prefix_filter(self):
+        sch = _make_two_resistors()
+        sch.add_component("capa.sym", 50, -50,
+                           attributes={"name": "C1", "value": "1u"})
+        n = sch.transform_components(prefix="R",
+                                      attrs={"footprint": "0805"})
+        assert n == 2
+        assert "footprint" not in sch.get_component("C1").attributes
+
+    def test_empty_attrs_and_remap_returns_zero(self):
+        sch = _make_two_resistors()
+        assert sch.transform_components(symbol="res.sym") == 0
+
+
+# ---------------------------------------------------------------------------
+# BOM
+# ---------------------------------------------------------------------------
+
+class TestBom:
+    def test_groups_by_symbol_value_footprint(self):
+        sch = Schematic.new()
+        sch.add_component("res.sym", 0, 0,
+                           attributes={"name": "R1", "value": "1k",
+                                       "footprint": "0805"})
+        sch.add_component("res.sym", 100, 0,
+                           attributes={"name": "R2", "value": "1k",
+                                       "footprint": "0805"})
+        sch.add_component("res.sym", 200, 0,
+                           attributes={"name": "R3", "value": "10k",
+                                       "footprint": "0805"})
+        bom = sch.bom()
+        assert all(isinstance(e, BomEntry) for e in bom)
+        by_value = {e.value: e.count for e in bom}
+        assert by_value == {"1k": 2, "10k": 1}
+
+    def test_skips_helper_symbols_by_default(self):
+        sch = Schematic.new()
+        sch.add_component("res.sym", 0, 0,
+                           attributes={"name": "R1", "value": "1k"})
+        sch.add_component("lab_pin.sym", 0, 0,
+                           attributes={"name": "lp_1", "lab": "VDD"})
+        sch.add_component("gnd.sym", 0, 0,
+                           attributes={"name": "g1", "lab": "GND"})
+        sch.add_component("title.sym", 0, 0,
+                           attributes={"name": "t1"})
+        bom = sch.bom()
+        symbols = {e.symbol for e in bom}
+        assert symbols == {"res.sym"}
+
+    def test_ignore_symbols_override(self):
+        sch = Schematic.new()
+        sch.add_component("res.sym", 0, 0,
+                           attributes={"name": "R1", "value": "1k"})
+        sch.add_component("lab_pin.sym", 0, 0,
+                           attributes={"name": "lp_1", "lab": "VDD"})
+        # Override: don't skip anything.
+        bom = sch.bom(ignore_symbols=set())
+        symbols = {e.symbol for e in bom}
+        assert "lab_pin.sym" in symbols
+
+    def test_flatten_requires_libs(self):
+        sch = Schematic.new()
+        sch.add_component("res.sym", 0, 0,
+                           attributes={"name": "R1", "value": "1k"})
+        with pytest.raises(ValueError, match="flatten=True requires libs"):
+            sch.bom(flatten=True)
+
+    def test_sorted_output(self):
+        sch = Schematic.new()
+        sch.add_component("res.sym", 0, 0,
+                           attributes={"name": "R1", "value": "1k"})
+        sch.add_component("capa.sym", 0, 0,
+                           attributes={"name": "C1", "value": "1u"})
+        bom = sch.bom()
+        assert [e.symbol for e in bom] == sorted(e.symbol for e in bom)
+
+
+# ---------------------------------------------------------------------------
+# add_net(between=...) form
+# ---------------------------------------------------------------------------
+
+class TestAddNetBetween:
+    def test_resolves_pin_pair(self):
+        sym = make_symbol(-10, -10, 10, 10)
+        sym.add_pin("P", "in", 0, -10)
+        libs = mock_libs(("res.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("res.sym", 100, -100,
+                           attributes={"name": "R1"})
+        sch.add_component("res.sym", 300, -100,
+                           attributes={"name": "R2"})
+        net = sch.add_net(between=(("R1", "P"), ("R2", "P")), libs=libs)
+        # Both pins at y = -110 (anchor y=-100 + pin local y=-10)
+        assert net.y1 == net.y2 == -110
+
+    def test_diagonal_rejected(self):
+        sym = make_symbol(-10, -10, 10, 10)
+        sym.add_pin("P", "in", 0, -10)
+        libs = mock_libs(("res.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("res.sym", 100, -100, attributes={"name": "R1"})
+        sch.add_component("res.sym", 300, -300, attributes={"name": "R2"})
+        with pytest.raises(ValueError, match="orthogonally aligned"):
+            sch.add_net(between=(("R1", "P"), ("R2", "P")), libs=libs)
+
+    def test_libs_required(self):
+        sch = Schematic.new()
+        with pytest.raises(ValueError, match="requires libs"):
+            sch.add_net(between=(("R1", "P"), ("R2", "P")))
+
+    def test_mixed_form_rejected(self):
+        sym = make_symbol(-10, -10, 10, 10)
+        sym.add_pin("P", "in", 0, 0)
+        libs = mock_libs(("res.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("res.sym", 0, 0, attributes={"name": "R1"})
+        sch.add_component("res.sym", 100, 0, attributes={"name": "R2"})
+        with pytest.raises(ValueError, match="either coordinates or between"):
+            sch.add_net(0, 0, 1, 1,
+                         between=(("R1", "P"), ("R2", "P")), libs=libs)
+
+    def test_partial_coords_rejected(self):
+        sch = Schematic.new()
+        with pytest.raises(ValueError,
+                            match="all four coordinates or between"):
+            sch.add_net(0, 0)
+
+    def test_legacy_coordinate_form_still_works(self):
+        sch = Schematic.new()
+        net = sch.add_net(0, 0, 100, 0, label="VDD")
+        assert net.label == "VDD"
+
+
+class TestAddWireDelegates:
+    def test_add_wire_creates_horizontal_segment(self):
+        sym = make_symbol(-10, -10, 10, 10)
+        sym.add_pin("P", "in", 0, 0)
+        libs = mock_libs(("res.sym", sym))
+        sch = Schematic.new()
+        sch.add_component("res.sym", 0, 0, attributes={"name": "R1"})
+        sch.add_component("res.sym", 100, 0, attributes={"name": "R2"})
+        net = sch.add_wire("R1", "P", "R2", "P", libs)
+        assert net.y1 == net.y2 == 0

@@ -373,18 +373,18 @@ class TestPinGeometryWithSystemLibrary:
         if sym.pins[0].x != 0:
             assert pos_normal != pos_mirror
 
-    def test_connect_pin_creates_net_at_correct_position(self, system_libs):
-        """connect() should create a net at the actual pin location."""
+    def test_connect_pin_places_lab_pin_at_correct_position(self, system_libs):
         sch = Schematic.new()
         sch.add_component("devices/res.sym", 200, 300, attributes={"name": "R1"})
         sym = system_libs.resolve("devices/res.sym")
         pin = sym.pins[0]
 
-        net = sch.connect("R1", pin.name, "VDD", system_libs)
+        comp = sch.connect("R1", pin.name, "VDD", system_libs)
         expected_x, expected_y = sch.pin_position("R1", pin.name, system_libs)
-        assert net.x1 == expected_x
-        assert net.y1 == expected_y
-        assert net.label == "VDD"
+        assert comp.symbol.endswith("lab_pin.sym")
+        assert system_libs.resolve(comp.symbol) is not None
+        assert (comp.x, comp.y) == (expected_x, expected_y)
+        assert comp.attributes.get("lab") == "VDD"
 
 
 # ---------------------------------------------------------------------------
@@ -487,7 +487,6 @@ class TestEndToEndWorkflow:
 
         assert len(sch.components) == 4
 
-        # Wire them up
         sch.connect(
             "R1",
             system_libs.resolve("devices/res.sym").pins[0].name,
@@ -501,15 +500,98 @@ class TestEndToEndWorkflow:
             system_libs,
         )
 
-        assert len(sch.nets) == 2
+        assert len(sch.components) == 6
 
         # Save and reload
         out = tmp_path / "generated.sch"
         sch.save(out)
         reloaded = Schematic.load(out)
-        assert len(reloaded.components) == 4
-        assert len(reloaded.nets) == 2
+        assert len(reloaded.components) == 6
+        labels = sorted(
+            c.attributes.get("lab", "")
+            for c in reloaded.components
+            if c.symbol.endswith("lab_pin.sym")
+        )
+        assert labels == ["VIN", "VOUT"]
 
         # Validate
         result = validate(reloaded, libs=system_libs)
         assert result is not None
+
+
+# ---------------------------------------------------------------------------
+# 11. End-to-end: combined new APIs
+#     audit + subcircuit_metadata + subcircuit_ports + bom + transform_components
+# ---------------------------------------------------------------------------
+
+@pytest.mark.skipif(not SYSTEM_DEVICES_DIR.is_dir(), reason="system library not found")
+class TestNewAPIIntegration:
+    def test_subcircuit_round_trip_with_metadata_and_ports(
+        self, tmp_path, system_libs
+    ):
+        """Author a sub-schematic with explicit ports and metadata,
+        save it, reload, and verify ports + K-block survive."""
+        from pyxschem import Schematic
+
+        sch = Schematic.new()
+        sch.add_component("ipin.sym", 100, -200,
+                           attributes={"name": "p1", "lab": "IN"})
+        sch.add_component("opin.sym", 500, -200,
+                           attributes={"name": "p2", "lab": "OUT"})
+        sch.add_component("res.sym", 300, -200,
+                           attributes={"name": "R1", "value": "1k"})
+        sch.set_subcircuit_metadata(format="@name @pinlist @symname")
+
+        out = tmp_path / "dut.sch"
+        sch.save(out)
+        again = Schematic.load(out)
+
+        assert again.k_attributes()["type"] == "subcircuit"
+        ports = again.subcircuit_ports()
+        assert [p.name for p in ports] == ["IN", "OUT"]
+        assert [p.direction for p in ports] == ["in", "out"]
+
+    def test_pdk_migration_via_transform_components(self, tmp_path, system_libs):
+        """Bulk attribute swap preserves connectivity; idempotent retry
+        reports zero."""
+        from pyxschem import Schematic, connectivity_from_schematic
+
+        sch = Schematic.new()
+        sch.add_component("devices/nmos4.sym", 100, -100,
+                           attributes={"name": "M1", "model": "n",
+                                       "w": "1u", "l": "1u", "m": "1"})
+        sch.add_component("devices/nmos4.sym", 300, -100,
+                           attributes={"name": "M2", "model": "n",
+                                       "w": "1u", "l": "1u", "m": "1"})
+
+        before_nets = {nc.net_name: tuple(sorted(nc.pins))
+                          for nc in connectivity_from_schematic(sch, system_libs)}
+        n = sch.transform_components(
+            symbol="devices/nmos4.sym",
+            attr_remap={"model": {"n": "nmos_lvt"}},
+        )
+        assert n == 2
+
+        # Idempotent retry.
+        n2 = sch.transform_components(
+            symbol="devices/nmos4.sym",
+            attr_remap={"model": {"n": "nmos_lvt"}},
+        )
+        assert n2 == 0
+
+        after_nets = {nc.net_name: tuple(sorted(nc.pins))
+                         for nc in connectivity_from_schematic(sch, system_libs)}
+        assert before_nets == after_nets
+
+    def test_bom_on_real_fixture(self, system_libs):
+        """BOM rolls up the rlc fixture to symbol-grouped totals."""
+        from pyxschem import BomEntry, Schematic
+
+        sch = Schematic.load(SYSTEM_EXAMPLES / "rlc.sch")
+        bom = sch.bom()
+        assert all(isinstance(e, BomEntry) for e in bom)
+        # Helper symbols (lab_pin / launcher / title / code) must not
+        # appear in the BOM.
+        forbidden = {"lab_pin.sym", "launcher.sym", "code_shown.sym",
+                      "title.sym"}
+        assert not (forbidden & {e.symbol for e in bom})

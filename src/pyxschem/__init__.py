@@ -10,6 +10,7 @@ from pyxschem.cli import XschemCLI
 from pyxschem.connectivity import (
     NetAnalyzer,
     NetConnection,
+    connectivity_from_netlist,
     connectivity_from_schematic,
 )
 from pyxschem.diff import (
@@ -33,13 +34,14 @@ from pyxschem.model import (
     RawLine,
     Text,
 )
-from pyxschem.schematic import Schematic
+from pyxschem.schematic import BomEntry, Schematic, SubcircuitPort
 from pyxschem.symbol import Pin, Symbol
 from pyxschem.validate import ValidationIssue, ValidationResult, Validator, validate
 
 __all__ = [
     "Arc",
     "BBox",
+    "BomEntry",
     "Box",
     "Component",
     "ComponentChange",
@@ -56,6 +58,7 @@ __all__ = [
     "RawLine",
     "SchemDiff",
     "Schematic",
+    "SubcircuitPort",
     "Symbol",
     "SymbolLibrary",
     "Text",
@@ -65,6 +68,7 @@ __all__ = [
     "Validator",
     "XschemCLI",
     "XschemConfig",
+    "connectivity_from_netlist",
     "connectivity_from_schematic",
     "diff_schematics",
     "parse_attributes",
