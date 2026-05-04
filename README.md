@@ -32,7 +32,10 @@ sch.set_component_value("R1", "4.7k")
 sch.set_component_attribute("R1", "m", "2")
 
 # Add / remove
-sch.add_component("devices/cap.sym", x=400, y=-200,
+# Symbol references can be either a basename ("cap.sym") or a subpath
+# ("devices/cap.sym"); both resolve as long as the library path covers
+# the symbol's location.
+sch.add_component("cap.sym", x=400, y=-200,
                    attributes={"name": "C1", "value": "100n"})
 sch.remove_component("C3")
 
@@ -110,13 +113,81 @@ all_primitives = sch.flatten(libs)
 
 ### Pin Geometry & Wiring
 
-Compute pin positions in schematic coordinates (handles mirror, rotation, translation) and connect pins to labeled nets.
+Compute pin positions in schematic coordinates (handles mirror, rotation, translation), label pins, and draw orthogonal wires between them.
 
 ```python
 x, y = sch.pin_position("R1", "P", libs)
 
-sch.connect("M1", "g", "clk", libs)   # label M1's gate pin as "clk"
+# Tag a pin with a net label — places a lab_pin.sym at the pin
+# coordinate so xschem's netlister adopts the label.
+sch.connect("M1", "g", "clk", libs)          # alias: sch.add_label_pin
 sch.connect("M1", "d", "VDD", libs)
+
+# The stock device library mixes upper/lower-case pin names; opt in
+# to fold the difference.
+sch.connect("C1", "p", "VOUT", libs, case_insensitive=True)
+
+# Draw a wire — either by coordinates or by pin endpoints.
+sch.add_net(100, -200, 300, -200)
+sch.add_net(between=(("R1", "P"), ("R2", "M")), libs=libs)
+
+# add_wire is a thin alias of the latter form.
+sch.add_wire("R1", "P", "R2", "M", libs)
+```
+
+### Subcircuit authoring
+
+```python
+sch = Schematic.new()
+sch.add_component("ipin.sym", x=100, y=-200, attributes={"name": "p1", "lab": "IN"})
+sch.add_component("opin.sym", x=500, y=-200, attributes={"name": "p2", "lab": "OUT"})
+# ... place internal devices ...
+
+# Mark this file as a subcircuit so xschem expands parent X-instances.
+sch.set_subcircuit_metadata(format="@name @pinlist @symname")
+
+# Discover the port list (in declaration order) of a sub-schematic.
+ports = sch.subcircuit_ports()
+# [SubcircuitPort(name='IN', direction='in', x=100, y=-200), ...]
+```
+
+### Refactoring
+
+```python
+# Bulk attribute swap — PDK migration in one call.
+sch.transform_components(
+    symbol="nmos4.sym",
+    attr_remap={"model": {"n": "nmos_lvt"}},
+)
+
+# Multi-key update on a single component.
+sch.set_component_attributes("M1", w="2u", l="0.18u", m="4")
+
+# General predicate/mutator.
+sch.bulk_update(
+    lambda c: c.symbol == "res.sym" and "footprint" not in c.attributes,
+    lambda c: c.set_attribute("footprint", "0805"),
+)
+```
+
+### Bill-of-materials
+
+```python
+for entry in sch.bom():
+    print(entry.count, entry.symbol, entry.value, entry.footprint)
+
+# Walk the hierarchy and roll up leaf components only.
+deep = top.bom(libs=libs, flatten=True)
+```
+
+### Project audit
+
+```python
+from pyxschem import audit_tree
+
+report = audit_tree("path/to/project", libs)
+print(report.summary())
+print(report.unresolved_by_symbol())   # {"missing.sym": [Path("a.sch"), ...]}
 ```
 
 ### Attribute Parsing
@@ -143,13 +214,34 @@ from pyxschem import XschemCLI
 cli = XschemCLI()                       # auto-detect binary
 cli = XschemCLI(binary="/usr/bin/xschem")
 
-# Generate netlist
-netlist = cli.netlist("amp.sch", format="spice", output_dir="build/")
-netlist = cli.netlist("top.sch", format="verilog")
+# Generate netlist — returns a pathlib.Path
+netlist_path = cli.netlist("amp.sch", format="spice", output_dir="build/")
+print(netlist_path.read_text())
 
-# Execute Tcl commands
+# Override the library search path for an isolated build
+netlist_path = cli.netlist(
+    "amp.sch",
+    format="spice",
+    output_dir="build/",
+    env={"XSCHEM_LIBRARY_PATH": "/path/to/libs:/path/to/devices"},
+)
+
+# Get the netlist as text directly.
+text = cli.netlist_text("amp.sch", output_dir="build/")
+
+# Execute a single Tcl command.
 output = cli.command("puts [xschem get instances]", schematic="amp.sch")
+
+# Or buffer multiple Tcl commands into one xschem invocation.
+with cli.session(schematic="amp.sch") as s:
+    s.run_tcl("puts [xschem get current_name]")
+    s.run_tcl("puts [xschem get instances]")
+print(s.stdout)
 ```
+
+`netlist()` raises `RuntimeError` when xschem silently emits a broken
+netlist (unresolved symbols or a Tcl-evaluation error), so consumers
+do not unknowingly ship `IS MISSING !!!!` placeholders.
 
 ## API Reference
 

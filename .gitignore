@@ -11,3 +11,4 @@ build/
 .ruff_cache/
 src/pyxschem/_version.py
 .coverage
+workspace/
