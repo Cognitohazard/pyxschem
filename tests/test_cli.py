@@ -75,3 +75,72 @@ class TestCommand:
         cli = XschemCLI()
         result = cli.run(["--version"])
         assert "XSCHEM" in result.stdout
+
+
+class TestNetlistText:
+    def test_returns_string(self, tmp_path):
+        cli = XschemCLI()
+        text = cli.netlist_text(FIXTURES / "real" / "nand2.sch",
+                                 output_dir=tmp_path)
+        assert isinstance(text, str)
+        assert text  # non-empty
+
+    def test_matches_path_read_text(self, tmp_path):
+        cli = XschemCLI()
+        path = cli.netlist(FIXTURES / "real" / "nand2.sch",
+                            output_dir=tmp_path)
+        text_via_helper = cli.netlist_text(
+            FIXTURES / "real" / "nand2.sch", output_dir=tmp_path)
+        assert text_via_helper == path.read_text(encoding="utf-8")
+
+
+class TestEnvAndCwd:
+    def test_env_overlay_respected_by_run(self, tmp_path):
+        cli = XschemCLI()
+        # XSCHEM_LIBRARY_PATH=/nonexistent shouldn't crash --version.
+        result = cli.run(["--version"], env={"XSCHEM_LIBRARY_PATH": "/nonexistent"})
+        assert "XSCHEM" in result.stdout
+
+    def test_unresolvable_symbol_raises(self, tmp_path):
+        cli = XschemCLI()
+        sch_path = tmp_path / "broken.sch"
+        sch_path.write_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\nK {}\nV {}\nS {}\nE {}\n"
+            "C {does_not_exist_xyz_test.sym} 100 -100 0 0 {name=X1}\n"
+        )
+        with pytest.raises(RuntimeError, match="MISSING"):
+            cli.netlist(sch_path, output_dir=tmp_path)
+
+
+class TestSession:
+    def test_session_runs_buffered_commands(self):
+        cli = XschemCLI()
+        with cli.session() as s:
+            s.run_tcl("puts cmd_a")
+            s.run_tcl("puts [expr 7 * 6]")
+        assert "cmd_a" in s.stdout
+        assert "42" in s.stdout
+
+    def test_session_run_tcl_after_flush_raises(self):
+        cli = XschemCLI()
+        with cli.session() as s:
+            s.run_tcl("puts x")
+        with pytest.raises(RuntimeError, match="already flushed"):
+            s.run_tcl("puts y")
+
+    def test_empty_session_does_not_invoke_xschem(self):
+        cli = XschemCLI()
+        with cli.session() as s:
+            pass
+        # No commands queued → no stdout produced.
+        assert s.stdout == ""
+
+    def test_explicit_flush_is_idempotent(self):
+        cli = XschemCLI()
+        with cli.session() as s:
+            s.run_tcl("puts hello")
+            s.flush()
+            stdout_first = s.stdout
+            s.flush()
+            assert s.stdout == stdout_first
