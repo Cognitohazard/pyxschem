@@ -15,7 +15,7 @@ from pathlib import Path
 from pyxschem._base import _ElementContainerMixin
 from pyxschem.attributes import parse_attributes
 from pyxschem.model import Box, Element, Header, Text
-from pyxschem.parser import extract_braced, parse_schematic
+from pyxschem.parser import parse_schematic
 
 # Layer used for pin boxes in xschem .sym files
 _PIN_LAYER = 5
@@ -159,19 +159,6 @@ class Symbol(_ElementContainerMixin):
         """Parse the K block from header lines."""
         if self._k_attrs is not None:
             return self._k_attrs
-
-        self._k_attrs = {}
         header = self.header
-        if header is None:
-            return self._k_attrs
-
-        for line in header.raw_lines:
-            if line.startswith("K "):
-                brace_start = line.find("{")
-                if brace_start == -1:
-                    continue
-                content, _ = extract_braced(line, brace_start)
-                self._k_attrs = parse_attributes(content)
-                break
-
+        self._k_attrs = header.k_attributes() if header is not None else {}
         return self._k_attrs

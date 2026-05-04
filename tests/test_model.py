@@ -512,6 +512,47 @@ class TestHeader:
             "E {}",
         ]
 
+    # -- K-block / get_block / set_block ------------------------------
+
+    def test_get_block_returns_brace_content(self):
+        h = Header.default_schematic()
+        assert h.get_block("K") == ""
+        assert h.get_block("V") == ""
+        # Bare letter unknown to header → None.
+        assert h.get_block("Z") is None
+
+    def test_set_block_overwrites(self):
+        h = Header.default_schematic()
+        h.set_block("K", "type=subcircuit format=foo")
+        assert h.get_block("K") == "type=subcircuit format=foo"
+
+    def test_set_block_inserts_when_missing(self):
+        h = Header(raw_lines=["v {xschem version=3.4.5 file_version=1.2}",
+                                "E {}"])
+        h.set_block("K", "type=subcircuit")
+        # Inserted before the trailing E line.
+        joined = "\n".join(h.raw_lines)
+        assert "K {type=subcircuit}" in joined
+        assert h.raw_lines[-1] == "E {}"
+
+    def test_k_attributes_default_empty(self):
+        h = Header.default_schematic()
+        assert h.k_attributes() == {}
+
+    def test_set_k_attributes_round_trips(self):
+        h = Header.default_schematic()
+        h.set_k_attributes({"type": "subcircuit",
+                              "format": "@name @pinlist @symname"})
+        attrs = h.k_attributes()
+        assert attrs["type"] == "subcircuit"
+        assert attrs["format"] == "@name @pinlist @symname"
+
+    def test_set_k_attributes_empty_clears_block(self):
+        h = Header.default_schematic()
+        h.set_k_attributes({"type": "subcircuit"})
+        h.set_k_attributes({})
+        assert h.get_block("K") == ""
+
 
 class TestRawLine:
     def test_preserves_unknown_line(self):

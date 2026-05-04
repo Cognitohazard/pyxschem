@@ -130,6 +130,69 @@ class Header:
     def to_lines(self) -> list[str]:
         return list(self.raw_lines)
 
+    # -- K-block (and other single-letter sections) accessors --
+
+    def get_block(self, prefix: str) -> str | None:
+        """Return the brace-content of a header block (e.g. ``"K"``).
+
+        Returns ``None`` if the block isn't present.  An empty
+        ``K {}`` returns ``""``.
+        """
+        from pyxschem.parser import extract_braced
+
+        marker = prefix + " "
+        for line in self.raw_lines:
+            if line.startswith(marker):
+                brace_start = line.find("{")
+                if brace_start == -1:
+                    return None
+                content, _ = extract_braced(line, brace_start)
+                return content
+        return None
+
+    def set_block(self, prefix: str, content: str) -> None:
+        """Replace (or insert) a header block by its single-letter prefix.
+
+        ``content`` is the brace body without the surrounding ``{ }``.
+        Pass ``""`` to clear a block (renders as ``K {}``).  If the
+        block doesn't exist it is appended just before the trailing
+        ``E {}`` marker; otherwise the existing line is overwritten.
+        """
+        new_line = f"{prefix} {{{content}}}"
+        marker = prefix + " "
+        for i, line in enumerate(self.raw_lines):
+            if line.startswith(marker):
+                self.raw_lines[i] = new_line
+                return
+        # Insert before the closing E block when possible.
+        for i, line in enumerate(self.raw_lines):
+            if line.startswith("E "):
+                self.raw_lines.insert(i, new_line)
+                return
+        self.raw_lines.append(new_line)
+
+    def k_attributes(self) -> dict[str, str]:
+        """Parsed K-block attributes (empty dict if ``K {}`` or absent)."""
+        from pyxschem.attributes import parse_attributes
+
+        content = self.get_block("K")
+        if not content:
+            return {}
+        return parse_attributes(content)
+
+    def set_k_attributes(self, attrs: dict[str, str]) -> None:
+        """Replace the K-block contents with the given attribute dict."""
+        from pyxschem.attributes import serialize_attributes
+
+        if not attrs:
+            self.set_block("K", "")
+            return
+        # serialize_attributes returns "{...}" — strip the outer braces.
+        body = serialize_attributes(attrs)
+        if body.startswith("{") and body.endswith("}"):
+            body = body[1:-1]
+        self.set_block("K", body)
+
 
 @dataclass
 class Component(_AutoDirtyMixin):
