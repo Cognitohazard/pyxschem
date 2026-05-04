@@ -56,7 +56,7 @@ class SymbolLibrary:
 
     def __init__(self, paths: list[Path]) -> None:
         self._paths = paths
-        self._cache: dict[str, Symbol] = {}
+        self._cache: dict[str, Symbol | None] = {}
 
     @property
     def paths(self) -> list[Path]:
@@ -71,29 +71,39 @@ class SymbolLibrary:
     def resolve(self, symbol_ref: str) -> Symbol | None:
         """Resolve a symbol reference to a Symbol instance.
 
-        Searches each library path for the symbol file.
-        Results are cached — repeated calls return the same object.
-
-        Args:
-            symbol_ref: Symbol reference, e.g. "devices/res.sym"
-
-        Returns:
-            Symbol instance, or None if not found.
+        Both subpath (``"devices/res.sym"``) and basename
+        (``"res.sym"``) forms are accepted, matching xschem's resolver.
+        See :meth:`_candidates_for` for the layout-based fallback.
+        Results (including misses) are cached.
         """
         if symbol_ref in self._cache:
             return self._cache[symbol_ref]
 
-        for base in self._paths:
-            candidate = base / symbol_ref
-            # Prevent path traversal — resolved path must remain under base
-            if not candidate.resolve().is_relative_to(base.resolve()):
-                continue
-            if candidate.is_file():
-                sym = Symbol.load(candidate)
-                self._cache[symbol_ref] = sym
-                return sym
+        ref_parts = Path(symbol_ref).parts
 
+        for base in self._paths:
+            for candidate in self._candidates_for(base, symbol_ref, ref_parts):
+                if not candidate.resolve().is_relative_to(base.resolve()):
+                    continue
+                if candidate.is_file():
+                    sym = Symbol.load(candidate)
+                    self._cache[symbol_ref] = sym
+                    return sym
+
+        self._cache[symbol_ref] = None
         return None
+
+    @staticmethod
+    def _candidates_for(
+        base: Path, symbol_ref: str, ref_parts: tuple[str, ...]
+    ) -> list[Path]:
+        """Plausible filesystem locations for a symbol_ref under base."""
+        candidates = [base / symbol_ref]
+        # If symbol_ref has a leading dir that matches the base name,
+        # the base already represents that dir — try the basename too.
+        if len(ref_parts) > 1 and ref_parts[0] == base.name:
+            candidates.append(base / Path(*ref_parts[1:]))
+        return candidates
 
     def search(self, query: str) -> list[str]:
         """Search for symbols matching a query string.
@@ -198,16 +208,17 @@ def _parse_xschemrc(text: str, base_dir: Path | None = None) -> list[Path]:
 def _substitute_vars(text: str, variables: dict[str, str]) -> str:
     """Substitute $VAR, ${VAR}, and $env(NAME) in text."""
 
-    def _replace(match: re.Match) -> str:
-        # ${VAR}
-        if match.group(1):
-            return variables.get(match.group(1), match.group(0))
-        # $env(NAME)
-        if match.group(2):
-            return os.environ.get(match.group(2), match.group(0))
-        # $VAR
-        if match.group(3):
-            return variables.get(match.group(3), match.group(0))
-        return match.group(0)
+    def _replace(match: re.Match[str]) -> str:
+        whole = match.group(0)
+        braced = match.group(1)
+        env_name = match.group(2)
+        bare = match.group(3)
+        if braced:
+            return variables.get(braced, whole)
+        if env_name:
+            return os.environ.get(env_name, whole)
+        if bare:
+            return variables.get(bare, whole)
+        return whole
 
     return _VAR_PATTERN.sub(_replace, text)

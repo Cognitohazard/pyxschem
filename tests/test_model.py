@@ -87,7 +87,7 @@ class TestComponent:
         )
         assert c.to_line() == "C {devices/gnd.sym} 160 -70 0 0 {}"
 
-    def test_attributes_with_spaces_are_braced(self):
+    def test_attributes_with_spaces_are_quoted_when_parens(self):
         c = Component(
             symbol="devices/vsource.sym",
             x=0,
@@ -97,7 +97,18 @@ class TestComponent:
             attributes={"name": "V1", "value": "PWL(0 0 1n 1.8)"},
         )
         line = c.to_line()
-        assert "value={PWL(0 0 1n 1.8)}" in line
+        assert 'value="PWL(0 0 1n 1.8)"' in line
+
+    def test_attributes_with_spaces_only_are_braced(self):
+        c = Component(
+            symbol="devices/res.sym",
+            x=0,
+            y=0,
+            rotation=0,
+            mirror=0,
+            attributes={"name": "R1", "value": "10 k"},
+        )
+        assert "value={10 k}" in c.to_line()
 
     def test_mark_dirty_clears_raw_line(self):
         c = Component(

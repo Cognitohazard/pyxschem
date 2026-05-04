@@ -304,3 +304,97 @@ class TestComponentOverlap:
         result = validate(sch, libs=libs)
         overlaps = [i for i in result.issues if i.category == "component_overlap"]
         assert len(overlaps) == 0
+
+
+# ---------------------------------------------------------------------------
+# Label/port symbol tolerance & rotation-aware checks (added with codex fixes)
+# ---------------------------------------------------------------------------
+
+from pyxschem.symbol import Symbol
+
+
+def _label_symbol() -> Symbol:
+    """A minimal label-type symbol for validator idiom tests."""
+    return Symbol.from_text(
+        "v {xschem version=3.4.5 file_version=1.2}\n"
+        "G {}\n"
+        "K {type=label net_name=true format=\"*.alias @lab\" "
+        "template=\"name=p1 lab=xxx\"}\n"
+        "V {}\nS {}\nE {}\n"
+        "B 5 -2.5 -2.5 2.5 2.5 {name=p dir=in}\n"
+    )
+
+
+class TestLabelSymbolTolerance:
+    def test_label_on_wire_does_not_trigger_wire_crosses_body(self):
+        # A wire passes through where a lab_pin sits — the label-on-wire
+        # idiom must be allowed.
+        res = make_symbol(-10, -10, 10, 10)
+        res.add_pin("P", "in", 0, -10)
+        res.add_pin("M", "in", 0, 10)
+        libs = mock_libs(("res.sym", res), ("lab_pin.sym", _label_symbol()))
+        sch = Schematic.new()
+        sch.add_component("res.sym", 0, 0, attributes={"name": "R1"})
+        sch.add_net(0, -10, 100, -10)               # rail at the P pin
+        sch.add_component("lab_pin.sym", 50, -10,
+                           attributes={"name": "lp_1", "lab": "VDD"})
+        result = validate(sch, libs=libs)
+        wire_through = [i for i in result.issues
+                          if i.category == "wire_crosses_body"]
+        pin_through = [i for i in result.issues
+                         if i.category == "pin_collision"]
+        assert wire_through == []
+        assert pin_through == []
+
+    def test_non_label_components_still_flagged(self):
+        # A regular component sitting on a wire should still trigger the
+        # warning — the tolerance is scoped to label-type symbols.
+        res = make_symbol(-10, -10, 10, 10)
+        res.add_pin("P", "in", 0, -10)
+        libs = mock_libs(("res.sym", res))
+        sch = Schematic.new()
+        sch.add_component("res.sym", 50, 0, attributes={"name": "R1"})
+        # Wire passes straight through R1's bbox (-10..10 around 50, 0).
+        sch.add_net(0, 0, 100, 0)
+        result = validate(sch, libs=libs)
+        cross = [i for i in result.issues
+                  if i.category == "wire_crosses_body"]
+        assert any("R1" in i.message for i in cross)
+
+
+class TestCoincidentPinsAreConnected:
+    def test_two_pins_at_same_point_dont_trigger_unconnected(self):
+        # No wire, but two coincident pins → xschem treats as a short.
+        res = make_symbol(-10, -10, 10, 10)
+        res.add_pin("P", "in", 0, 0)
+        libs = mock_libs(("res.sym", res), ("lab_pin.sym", _label_symbol()))
+        sch = Schematic.new()
+        sch.add_component("res.sym", 50, 50, attributes={"name": "R1"})
+        sch.add_component("lab_pin.sym", 50, 50,
+                           attributes={"name": "lp_1", "lab": "VDD"})
+        result = validate(sch, libs=libs)
+        unconnected = [i for i in result.issues
+                         if i.category == "unconnected_pin"
+                         and "'R1'" in i.message]
+        assert unconnected == []
+
+
+class TestFloatingNetRotationAware:
+    def test_rotated_pin_endpoint_not_floating(self):
+        res = make_symbol(-10, -10, 10, 10)
+        res.add_pin("P", "in", 0, -30)
+        libs = mock_libs(("res.sym", res))
+        sch = Schematic.new()
+        # Rotation 1: pin (0,-30) lands at (cx+30, cy+0) = (130, -100)
+        sch.add_component("res.sym", 100, -100, rotation=1,
+                           attributes={"name": "R1"})
+        # Net endpoint at the rotated pin's actual location.
+        sch.add_net(130, -100, 200, -100)
+        result = validate(sch, libs=libs)
+        floating = [i for i in result.issues
+                     if i.category == "floating_net"]
+        # The (130,-100) endpoint is on R1's rotated pin and must NOT
+        # be flagged as floating; the (200,-100) far endpoint legitimately
+        # is, and that's fine.
+        for i in floating:
+            assert "(130, -100)" not in i.message

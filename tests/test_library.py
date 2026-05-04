@@ -188,3 +188,47 @@ class TestSymbolLibrarySearch:
         assert len(syms) == 2
         assert "devices/res.sym" in syms
         assert "devices/nmos4.sym" in syms
+
+
+class TestResolveDualForm:
+    def test_subpath_form_resolves_under_parent_root(self, tmp_path):
+        paths = _make_lib(tmp_path, {"lib": ["devices/res.sym"]})
+        lib = SymbolLibrary(paths)
+        # Library root is `lib` (parent of devices/) → subpath form works.
+        assert lib.resolve("devices/res.sym") is not None
+
+    def test_basename_falls_back_when_base_matches_leading_dir(self, tmp_path):
+        # Create the library rooted directly at the `devices` dir.
+        _make_lib(tmp_path, {"lib": ["devices/res.sym"]})
+        devices_root = tmp_path / "lib" / "devices"
+        lib = SymbolLibrary([devices_root])
+        # Both forms must resolve under the devices-as-root layout.
+        assert lib.resolve("res.sym") is not None
+        assert lib.resolve("devices/res.sym") is not None
+
+    def test_unrelated_subpath_does_not_match_basename(self, tmp_path):
+        # Basename fallback fires only when base.name == leading dir.
+        _make_lib(tmp_path, {"hierarchy": ["res.sym"]})
+        lib = SymbolLibrary([tmp_path / "hierarchy"])
+        # base.name is "hierarchy", ref leading dir is "devices" → no fallback
+        assert lib.resolve("devices/res.sym") is None
+
+
+class TestResolveCache:
+    def test_hits_cached(self, tmp_path):
+        paths = _make_lib(tmp_path, {"lib": ["devices/res.sym"]})
+        lib = SymbolLibrary(paths)
+        first = lib.resolve("devices/res.sym")
+        second = lib.resolve("devices/res.sym")
+        assert first is second  # same Symbol instance from cache
+
+    def test_misses_are_cached_too(self, tmp_path):
+        paths = _make_lib(tmp_path, {"lib": ["devices/res.sym"]})
+        lib = SymbolLibrary(paths)
+        # Miss → cached as None.
+        assert lib.resolve("does_not_exist.sym") is None
+        # Confirm cached entry exists; invocation should not re-walk paths.
+        assert "does_not_exist.sym" in lib._cache
+        assert lib._cache["does_not_exist.sym"] is None
+        # Second call still returns None (this one is what's actually cached).
+        assert lib.resolve("does_not_exist.sym") is None

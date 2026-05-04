@@ -181,3 +181,68 @@ class TestConnectivityFromSchematic:
         sch = Schematic.new()
         result = connectivity_from_schematic(sch, libs)
         assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Net-name adoption from label/port symbols.
+# ---------------------------------------------------------------------------
+
+from pyxschem.symbol import Symbol
+
+
+def _label_symbol() -> Symbol:
+    return Symbol.from_text(
+        "v {xschem version=3.4.5 file_version=1.2}\n"
+        "G {}\n"
+        "K {type=label net_name=true format=\"*.alias @lab\" "
+        "template=\"name=p1 lab=xxx\"}\n"
+        "V {}\nS {}\nE {}\n"
+        "B 5 -2.5 -2.5 2.5 2.5 {name=p dir=in}\n"
+    )
+
+
+class TestNetNameFromLabelSymbol:
+    def test_label_pin_propagates_lab_attribute(self):
+        res = make_symbol(-10, -10, 10, 10)
+        res.add_pin("P", "in", 0, 0)
+        libs = mock_libs(("res.sym", res), ("lab_pin.sym", _label_symbol()))
+        sch = Schematic.new()
+        sch.add_component("res.sym", 100, -100, attributes={"name": "R1"})
+        sch.add_component("lab_pin.sym", 100, -100,
+                           attributes={"name": "lp_1", "lab": "VDD"})
+        nets = connectivity_from_schematic(sch, libs)
+        names = {n.net_name for n in nets}
+        assert "VDD" in names
+
+    def test_unrelated_lab_attribute_ignored(self):
+        # A regular component with `lab=...` is NOT a label-type symbol;
+        # its lab must not be adopted as the net name.
+        res = make_symbol(-10, -10, 10, 10)
+        res.add_pin("P", "in", 0, 0)
+        libs = mock_libs(("res.sym", res))
+        sch = Schematic.new()
+        sch.add_component("res.sym", 100, -100,
+                           attributes={"name": "R1", "lab": "FAKE"})
+        nets = connectivity_from_schematic(sch, libs)
+        names = {n.net_name for n in nets}
+        assert "FAKE" not in names
+
+    def test_port_type_symbol_also_propagates(self):
+        # type="port" (ipin/opin idiom) is recognised the same way.
+        port = Symbol.from_text(
+            "v {xschem version=3.4.5 file_version=1.2}\n"
+            "G {}\n"
+            "K {type=port net_name=true format=\"*.ipin @lab\" "
+            "template=\"name=p1 lab=xxx\"}\n"
+            "V {}\nS {}\nE {}\n"
+            "B 5 -2.5 -2.5 2.5 2.5 {name=p dir=in}\n"
+        )
+        res = make_symbol(-10, -10, 10, 10)
+        res.add_pin("P", "in", 0, 0)
+        libs = mock_libs(("res.sym", res), ("ipin.sym", port))
+        sch = Schematic.new()
+        sch.add_component("res.sym", 0, 0, attributes={"name": "R1"})
+        sch.add_component("ipin.sym", 0, 0,
+                           attributes={"name": "p1", "lab": "INPUT"})
+        nets = connectivity_from_schematic(sch, libs)
+        assert "INPUT" in {n.net_name for n in nets}

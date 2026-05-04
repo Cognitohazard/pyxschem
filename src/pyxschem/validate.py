@@ -74,20 +74,23 @@ class Validator:
         self._sch = schematic
         self._libs = libs
         self._gq: GeometryQuery | None = None
+        self._label_components: set[str] | None = None
 
     def validate(self) -> ValidationResult:
         """Run all applicable validation checks."""
         issues: list[ValidationIssue] = []
         issues.extend(self._check_duplicate_names())
         issues.extend(self._check_missing_names())
-        issues.extend(self._check_floating_nets())
-        issues.extend(self._check_unintended_junctions())
         if self._libs is not None:
             gq = self._get_geometry_query()
+            issues.extend(self._check_floating_nets(gq))
             issues.extend(self._check_unconnected_pins(gq))
             issues.extend(self._check_wire_crosses_body(gq))
             issues.extend(self._check_pin_collisions(gq))
             issues.extend(self._check_component_overlap(gq))
+        else:
+            issues.extend(self._check_floating_nets(None))
+        issues.extend(self._check_unintended_junctions())
         return ValidationResult(issues=issues)
 
     def check_net(
@@ -175,8 +178,21 @@ class Validator:
                 )
         return issues
 
-    def _check_floating_nets(self) -> list[ValidationIssue]:
-        comp_positions = {(c.x, c.y) for c in self._sch.components}
+    def _check_floating_nets(
+        self, gq: GeometryQuery | None
+    ) -> list[ValidationIssue]:
+        # An endpoint is "connected" if any of:
+        #  - it sits on a component pin (rotation-aware via gq)
+        #  - it touches another net's endpoint
+        #  - it falls on a component anchor (cheap fallback when gq is
+        #    unavailable; legacy behaviour)
+        connection_points: set[tuple[float, float]] = set()
+        if gq is not None:
+            for px, py, _, _ in gq.pin_positions():
+                connection_points.add((px, py))
+        else:
+            connection_points.update((c.x, c.y) for c in self._sch.components)
+
         endpoint_count: Counter[tuple[float, float]] = Counter()
         for n in self._sch.nets:
             endpoint_count[(n.x1, n.y1)] += 1
@@ -190,7 +206,7 @@ class Validator:
                 continue
             for x, y in ((n.x1, n.y1), (n.x2, n.y2)):
                 point = (x, y)
-                if point in comp_positions:
+                if point in connection_points:
                     continue
                 if endpoint_count[point] >= 2:
                     continue
@@ -244,20 +260,30 @@ class Validator:
             net_points.add((n.x1, n.y1))
             net_points.add((n.x2, n.y2))
 
+        # Coincident pins are electrically connected (xschem shorts
+        # them) even without a wire — treat any coordinate carrying ≥2
+        # pins as connected.
+        pin_count: Counter[tuple[float, float]] = Counter()
+        for px, py, _, _ in gq.pin_positions():
+            pin_count[(px, py)] += 1
+
         issues = []
         for px, py, comp_label, pin_name in gq.pin_positions():
-            if (px, py) not in net_points:
-                issues.append(
-                    ValidationIssue(
-                        severity="warning",
-                        category="unconnected_pin",
-                        message=(
-                            f"Pin '{pin_name}' of '{comp_label}'"
-                            f" at ({px}, {py}) has no net"
-                        ),
-                        element=None,
-                    )
+            if (px, py) in net_points:
+                continue
+            if pin_count[(px, py)] >= 2:
+                continue
+            issues.append(
+                ValidationIssue(
+                    severity="warning",
+                    category="unconnected_pin",
+                    message=(
+                        f"Pin '{pin_name}' of '{comp_label}'"
+                        f" at ({px}, {py}) has no net"
+                    ),
+                    element=None,
                 )
+            )
         return issues
 
     def _check_wire_crosses_body(self, gq: GeometryQuery) -> list[ValidationIssue]:
@@ -265,10 +291,14 @@ class Validator:
 
         issues = []
         comp_bboxes = list(gq.component_bboxes().items())
+        label_components = self._label_component_names()
 
         for net in self._sch.nets:
             endpoints = {(net.x1, net.y1), (net.x2, net.y2)}
             for comp_name, bbox in comp_bboxes:
+                # Label/port symbols are idiomatically placed on wires.
+                if comp_name in label_components:
+                    continue
                 if any(bbox.contains_point(x, y) for x, y in endpoints):
                     continue
                 if segment_crosses_bbox(net.x1, net.y1, net.x2, net.y2, bbox):
@@ -289,9 +319,12 @@ class Validator:
         from pyxschem.geometry import point_on_segment
 
         issues = []
+        label_components = self._label_component_names()
         for net in self._sch.nets:
             endpoints = {(net.x1, net.y1), (net.x2, net.y2)}
             for px, py, comp_label, pin_name in gq.pin_positions():
+                if comp_label in label_components:
+                    continue
                 if (px, py) in endpoints:
                     continue
                 if point_on_segment(px, py, net.x1, net.y1, net.x2, net.y2):
@@ -308,6 +341,25 @@ class Validator:
                         )
                     )
         return issues
+
+    def _label_component_names(self) -> set[str]:
+        """Memoised set of label/port-type components."""
+        if self._label_components is not None:
+            return self._label_components
+        if self._libs is None:
+            self._label_components = set()
+            return self._label_components
+        names: set[str] = set()
+        for c in self._sch.components:
+            if not c.name:
+                continue
+            sym = self._libs.resolve(c.symbol)
+            if sym is None:
+                continue
+            if (sym.type or "").lower() in {"label", "port"}:
+                names.add(c.name)
+        self._label_components = names
+        return names
 
     def _check_component_overlap(self, gq: GeometryQuery) -> list[ValidationIssue]:
         issues = []

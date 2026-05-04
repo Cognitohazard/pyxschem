@@ -222,13 +222,16 @@ def connectivity_from_schematic(
             label_at[id1] = net.label
             label_at[id2] = net.label
 
-    # Process component pins — register their positions
+    # Register pin positions; for label/port symbols (gnd/vdd/lab_pin/
+    # ipin/opin) also adopt their `lab` attribute as the net name.
     pin_at: dict[int, list[tuple[str, str]]] = {}  # point_id → [(comp, pin)]
     for comp in sch.components:
         sym = libs.resolve(comp.symbol)
         if sym is None:
             continue
         comp_label = comp.label
+        is_label_symbol = (sym.type or "").lower() in {"label", "port"}
+        net_label = comp.attributes.get("lab") if is_label_symbol else None
         for pin in sym.pins:
             px, py = transform_point(
                 pin.x, pin.y, comp.x, comp.y, comp.rotation, comp.mirror
@@ -237,6 +240,8 @@ def connectivity_from_schematic(
             if pid not in pin_at:
                 pin_at[pid] = []
             pin_at[pid].append((comp_label, pin.name))
+            if net_label:
+                label_at[pid] = net_label
 
     # Merge groups that share a label
     label_root: dict[str, int] = {}

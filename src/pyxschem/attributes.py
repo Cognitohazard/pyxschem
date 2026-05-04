@@ -124,7 +124,7 @@ def serialize_attributes(attrs: dict[str, str]) -> str:
         if not value:
             pairs.append(key)
         elif _needs_quoting(value):
-            if _braces_balanced(value):
+            if _braces_balanced(value) and not _needs_quote_form(value):
                 pairs.append(f"{key}={{{value}}}")
             else:
                 escaped = value.replace("\\", "\\\\").replace('"', '\\"')
@@ -138,6 +138,15 @@ def serialize_attributes(attrs: dict[str, str]) -> str:
 def _needs_quoting(value: str) -> bool:
     """Check if a value needs brace or double quoting."""
     return any(ch in ' \t\n\r{}"=' for ch in value)
+
+
+def _needs_quote_form(value: str) -> bool:
+    """Values that must use double-quotes rather than braces.
+
+    Brace-wrapped values containing ``(`` or ``)`` break ``expr {...}``
+    in xschem's tcleval-driven format fields (e.g. ``vsource.sym``).
+    """
+    return "(" in value or ")" in value
 
 
 def _braces_balanced(value: str) -> bool:

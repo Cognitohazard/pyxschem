@@ -132,8 +132,12 @@ class TestSerialize:
         assert serialize_attributes({}) == "{}"
 
     def test_value_with_spaces_gets_braced(self):
+        result = serialize_attributes({"name": "R1", "value": "10 k"})
+        assert result == "{name=R1 value={10 k}}"
+
+    def test_value_with_parens_gets_quoted_not_braced(self):
         result = serialize_attributes({"name": "V1", "value": "PWL(0 0 1n 1.8)"})
-        assert result == "{name=V1 value={PWL(0 0 1n 1.8)}}"
+        assert result == '{name=V1 value="PWL(0 0 1n 1.8)"}'
 
     def test_value_with_equals_gets_braced(self):
         result = serialize_attributes({"name": "X1", "value": "W=1 L=0.15"})
