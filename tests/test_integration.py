@@ -551,6 +551,31 @@ class TestNewAPIIntegration:
         assert [p.name for p in ports] == ["IN", "OUT"]
         assert [p.direction for p in ports] == ["in", "out"]
 
+    def test_audit_tree_on_built_project(self, tmp_path, system_libs):
+        """Build a 3-file project and confirm audit_tree summarises it."""
+        from pyxschem import Schematic, audit_tree
+
+        sch_ok = Schematic.new()
+        sch_ok.add_component("devices/res.sym", 0, 0,
+                              attributes={"name": "R1", "value": "1k"})
+        sch_ok.save(tmp_path / "ok.sch")
+
+        sch_bad = Schematic.new()
+        sch_bad.add_component("devices/res.sym", 0, 0,
+                               attributes={"name": "R2"})
+        sch_bad.save(tmp_path / "bad.sch")
+
+        sch_unres = Schematic.new()
+        sch_unres.add_component("missing_xyz_int.sym", 0, 0,
+                                  attributes={"name": "X1"})
+        sch_unres.save(tmp_path / "unres.sch")
+
+        rep = audit_tree(tmp_path, system_libs)
+        assert rep.n_files == 3
+        assert rep.total_unresolved == 1
+        assert rep.total_missing_value == 1
+        assert not rep.is_clean
+
     def test_pdk_migration_via_transform_components(self, tmp_path, system_libs):
         """Bulk attribute swap preserves connectivity; idempotent retry
         reports zero."""

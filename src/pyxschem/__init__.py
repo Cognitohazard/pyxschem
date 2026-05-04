@@ -6,6 +6,12 @@ except ModuleNotFoundError:
     __version__ = "0.0.0+unknown"
 
 from pyxschem.attributes import parse_attributes, serialize_attributes
+from pyxschem.audit import (
+    DEFAULT_VALUE_PREFIXES,
+    FileReport,
+    ProjectReport,
+    audit_tree,
+)
 from pyxschem.cli import XschemCLI
 from pyxschem.connectivity import (
     NetAnalyzer,
@@ -39,12 +45,14 @@ from pyxschem.symbol import Pin, Symbol
 from pyxschem.validate import ValidationIssue, ValidationResult, Validator, validate
 
 __all__ = [
+    "DEFAULT_VALUE_PREFIXES",
     "Arc",
     "BBox",
     "BomEntry",
     "Box",
     "Component",
     "ComponentChange",
+    "FileReport",
     "GeometryQuery",
     "GraphicLine",
     "Header",
@@ -55,6 +63,7 @@ __all__ = [
     "NetConnection",
     "Pin",
     "Polygon",
+    "ProjectReport",
     "RawLine",
     "SchemDiff",
     "Schematic",
@@ -68,6 +77,7 @@ __all__ = [
     "Validator",
     "XschemCLI",
     "XschemConfig",
+    "audit_tree",
     "connectivity_from_netlist",
     "connectivity_from_schematic",
     "diff_schematics",
