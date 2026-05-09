@@ -301,9 +301,10 @@ class Schematic(_ElementContainerMixin):
         def matches(c: Component) -> bool:
             if symbol is not None and c.symbol != symbol:
                 return False
-            if prefix is not None and not (c.name and c.name.startswith(prefix)):
-                return False
-            return True
+            return not (
+                prefix is not None
+                and not (c.name and c.name.startswith(prefix))
+            )
 
         n_changed = 0
         for c in self.components:
@@ -354,7 +355,7 @@ class Schematic(_ElementContainerMixin):
                 "code_shown.sym", "noconn.sym",
             }
 
-        def comp_iter() -> "list[Component]":
+        def comp_iter() -> list[Component]:
             if not flatten:
                 return list(self.components)
             if libs is None:

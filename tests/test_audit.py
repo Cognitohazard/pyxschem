@@ -17,6 +17,11 @@ from pyxschem import (
 FIXTURES = Path(__file__).parent / "fixtures"
 DEVICES = Path("/usr/share/xschem/xschem_library/devices")
 
+pytestmark = pytest.mark.skipif(
+    not (DEVICES / "res.sym").is_file(),
+    reason="xschem device library not installed at /usr/share/xschem",
+)
+
 
 def _devices_libs() -> SymbolLibrary:
     return SymbolLibrary.from_config(XschemConfig.from_paths([DEVICES]))

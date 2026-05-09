@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, PropertyMock
 from conftest import make_symbol, mock_libs
 
 from pyxschem.schematic import Schematic
-from pyxschem.symbol import Pin
+from pyxschem.symbol import Pin, Symbol
 from pyxschem.validate import Validator, validate
 
 
@@ -309,8 +309,6 @@ class TestComponentOverlap:
 # ---------------------------------------------------------------------------
 # Label/port symbol tolerance & rotation-aware checks (added with codex fixes)
 # ---------------------------------------------------------------------------
-
-from pyxschem.symbol import Symbol
 
 
 def _label_symbol() -> Symbol:

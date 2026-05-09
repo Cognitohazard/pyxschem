@@ -9,7 +9,7 @@ from pyxschem.connectivity import (
     connectivity_from_schematic,
 )
 from pyxschem.schematic import Schematic
-from pyxschem.symbol import Pin
+from pyxschem.symbol import Pin, Symbol
 
 # ---------------------------------------------------------------------------
 # SPICE netlist parsing
@@ -186,8 +186,6 @@ class TestConnectivityFromSchematic:
 # ---------------------------------------------------------------------------
 # Net-name adoption from label/port symbols.
 # ---------------------------------------------------------------------------
-
-from pyxschem.symbol import Symbol
 
 
 def _label_symbol() -> Symbol:
