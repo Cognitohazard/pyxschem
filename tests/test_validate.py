@@ -316,8 +316,8 @@ def _label_symbol() -> Symbol:
     return Symbol.from_text(
         "v {xschem version=3.4.5 file_version=1.2}\n"
         "G {}\n"
-        "K {type=label net_name=true format=\"*.alias @lab\" "
-        "template=\"name=p1 lab=xxx\"}\n"
+        'K {type=label net_name=true format="*.alias @lab" '
+        'template="name=p1 lab=xxx"}\n'
         "V {}\nS {}\nE {}\n"
         "B 5 -2.5 -2.5 2.5 2.5 {name=p dir=in}\n"
     )
@@ -333,14 +333,13 @@ class TestLabelSymbolTolerance:
         libs = mock_libs(("res.sym", res), ("lab_pin.sym", _label_symbol()))
         sch = Schematic.new()
         sch.add_component("res.sym", 0, 0, attributes={"name": "R1"})
-        sch.add_net(0, -10, 100, -10)               # rail at the P pin
-        sch.add_component("lab_pin.sym", 50, -10,
-                           attributes={"name": "lp_1", "lab": "VDD"})
+        sch.add_net(0, -10, 100, -10)  # rail at the P pin
+        sch.add_component(
+            "lab_pin.sym", 50, -10, attributes={"name": "lp_1", "lab": "VDD"}
+        )
         result = validate(sch, libs=libs)
-        wire_through = [i for i in result.issues
-                          if i.category == "wire_crosses_body"]
-        pin_through = [i for i in result.issues
-                         if i.category == "pin_collision"]
+        wire_through = [i for i in result.issues if i.category == "wire_crosses_body"]
+        pin_through = [i for i in result.issues if i.category == "pin_collision"]
         assert wire_through == []
         assert pin_through == []
 
@@ -355,8 +354,7 @@ class TestLabelSymbolTolerance:
         # Wire passes straight through R1's bbox (-10..10 around 50, 0).
         sch.add_net(0, 0, 100, 0)
         result = validate(sch, libs=libs)
-        cross = [i for i in result.issues
-                  if i.category == "wire_crosses_body"]
+        cross = [i for i in result.issues if i.category == "wire_crosses_body"]
         assert any("R1" in i.message for i in cross)
 
 
@@ -368,12 +366,15 @@ class TestCoincidentPinsAreConnected:
         libs = mock_libs(("res.sym", res), ("lab_pin.sym", _label_symbol()))
         sch = Schematic.new()
         sch.add_component("res.sym", 50, 50, attributes={"name": "R1"})
-        sch.add_component("lab_pin.sym", 50, 50,
-                           attributes={"name": "lp_1", "lab": "VDD"})
+        sch.add_component(
+            "lab_pin.sym", 50, 50, attributes={"name": "lp_1", "lab": "VDD"}
+        )
         result = validate(sch, libs=libs)
-        unconnected = [i for i in result.issues
-                         if i.category == "unconnected_pin"
-                         and "'R1'" in i.message]
+        unconnected = [
+            i
+            for i in result.issues
+            if i.category == "unconnected_pin" and "'R1'" in i.message
+        ]
         assert unconnected == []
 
 
@@ -384,13 +385,11 @@ class TestFloatingNetRotationAware:
         libs = mock_libs(("res.sym", res))
         sch = Schematic.new()
         # Rotation 1: pin (0,-30) lands at (cx+30, cy+0) = (130, -100)
-        sch.add_component("res.sym", 100, -100, rotation=1,
-                           attributes={"name": "R1"})
+        sch.add_component("res.sym", 100, -100, rotation=1, attributes={"name": "R1"})
         # Net endpoint at the rotated pin's actual location.
         sch.add_net(130, -100, 200, -100)
         result = validate(sch, libs=libs)
-        floating = [i for i in result.issues
-                     if i.category == "floating_net"]
+        floating = [i for i in result.issues if i.category == "floating_net"]
         # The (130,-100) endpoint is on R1's rotated pin and must NOT
         # be flagged as floating; the (200,-100) far endpoint legitimately
         # is, and that's fine.

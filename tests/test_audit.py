@@ -32,8 +32,7 @@ def broken_tree(tmp_path: Path) -> Path:
     """Synthesise a 4-file project: 1 unresolved symbol, 1 missing value,
     1 missing name, 1 clean."""
     sch_a = Schematic.new()
-    sch_a.add_component("totally_made_up_xyz.sym", 100, -100,
-                         attributes={"name": "X1"})
+    sch_a.add_component("totally_made_up_xyz.sym", 100, -100, attributes={"name": "X1"})
     sch_a.save(tmp_path / "a.sch")
 
     sch_b = Schematic.new()
@@ -45,8 +44,7 @@ def broken_tree(tmp_path: Path) -> Path:
     sch_c.save(tmp_path / "c.sch")
 
     sch_d = Schematic.new()
-    sch_d.add_component("res.sym", 100, -100,
-                         attributes={"name": "R1", "value": "10k"})
+    sch_d.add_component("res.sym", 100, -100, attributes={"name": "R1", "value": "10k"})
     sch_d.save(tmp_path / "d.sch")
     return tmp_path
 
@@ -97,8 +95,7 @@ class TestAuditTree:
         # X1 normally is not a "needs value" prefix; opt in.
         sch.add_component("res.sym", 100, -100, attributes={"name": "X1"})
         sch.save(tmp_path / "x.sch")
-        rep = audit_tree(tmp_path, _devices_libs(),
-                          value_prefixes={"X"})
+        rep = audit_tree(tmp_path, _devices_libs(), value_prefixes={"X"})
         x = next(f for f in rep.files if f.path.name == "x.sch")
         assert x.missing_value == ["X1"]
 
@@ -110,8 +107,9 @@ class TestAuditTree:
     def test_unresolved_counted_once_per_instance(self, tmp_path: Path):
         sch = Schematic.new()
         for i in range(3):
-            sch.add_component("missing_sym.sym", 100 * i, -100,
-                               attributes={"name": f"X{i+1}"})
+            sch.add_component(
+                "missing_sym.sym", 100 * i, -100, attributes={"name": f"X{i + 1}"}
+            )
         sch.save(tmp_path / "multi.sch")
         rep = audit_tree(tmp_path, _devices_libs())
         f = rep.files[0]
@@ -152,8 +150,7 @@ class TestProjectReport:
 
     def test_is_clean_when_no_problems(self, tmp_path: Path):
         sch = Schematic.new()
-        sch.add_component("res.sym", 0, 0,
-                           attributes={"name": "R1", "value": "1k"})
+        sch.add_component("res.sym", 0, 0, attributes={"name": "R1", "value": "1k"})
         sch.save(tmp_path / "ok.sch")
         rep = audit_tree(tmp_path, _devices_libs())
         assert rep.is_clean is True

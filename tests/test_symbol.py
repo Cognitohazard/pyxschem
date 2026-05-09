@@ -276,8 +276,8 @@ class TestPinSide:
     def _two_pin_symbol(self) -> Symbol:
         sym = Symbol.new()
         sym.add_box(layer=4, x1=-10, y1=-25, x2=10, y2=25)  # body
-        sym.add_pin("P", "in", 0, -30)   # top
-        sym.add_pin("M", "out", 0, 30)   # bottom
+        sym.add_pin("P", "in", 0, -30)  # top
+        sym.add_pin("M", "out", 0, 30)  # bottom
         return sym
 
     def test_local_default_rotation(self):

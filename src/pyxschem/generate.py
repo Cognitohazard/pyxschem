@@ -67,8 +67,12 @@ def get_pin_position(
         if len(matches) == 1:
             pin = matches[0]
             return transform_pin(
-                pin.x, pin.y, component.x, component.y,
-                component.rotation, component.mirror,
+                pin.x,
+                pin.y,
+                component.x,
+                component.y,
+                component.rotation,
+                component.mirror,
             )
         if len(matches) > 1:
             raise ValueError(
@@ -95,10 +99,7 @@ def get_pin_position(
         None,
     )
     if case_match is not None and case_match != pin_name:
-        suggestion = (
-            f" (did you mean '{case_match}'?"
-            f" — or pass case_insensitive=True)"
-        )
+        suggestion = f" (did you mean '{case_match}'? — or pass case_insensitive=True)"
     raise ValueError(
         f"Pin '{pin_name}' not found on symbol '{component.symbol}'"
         f" (component '{component.name}', rotation={component.rotation},"
@@ -141,9 +142,7 @@ def connect_pin(
     if comp is None:
         raise ValueError(f"Component '{comp_name}' not found")
 
-    px, py = get_pin_position(
-        comp, pin_name, libs, case_insensitive=case_insensitive
-    )
+    px, py = get_pin_position(comp, pin_name, libs, case_insensitive=case_insensitive)
     label_symbol = next(
         (ref for ref in _LABEL_PIN_CANDIDATES if libs.resolve(ref) is not None),
         None,

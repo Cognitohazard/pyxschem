@@ -137,9 +137,14 @@ class Schematic(_ElementContainerMixin):
             lab = c.attributes.get("lab")
             if lab is None:
                 continue
-            result.append(SubcircuitPort(
-                name=lab, direction=d, x=c.x, y=c.y,
-            ))
+            result.append(
+                SubcircuitPort(
+                    name=lab,
+                    direction=d,
+                    x=c.x,
+                    y=c.y,
+                )
+            )
         return result
 
     def set_subcircuit_metadata(
@@ -302,8 +307,7 @@ class Schematic(_ElementContainerMixin):
             if symbol is not None and c.symbol != symbol:
                 return False
             return not (
-                prefix is not None
-                and not (c.name and c.name.startswith(prefix))
+                prefix is not None and not (c.name and c.name.startswith(prefix))
             )
 
         n_changed = 0
@@ -349,10 +353,17 @@ class Schematic(_ElementContainerMixin):
         """
         if ignore_symbols is None:
             ignore_symbols = {
-                "lab_pin.sym", "gnd.sym", "vdd.sym",
-                "ipin.sym", "opin.sym", "iopin.sym",
-                "title.sym", "launcher.sym", "code.sym",
-                "code_shown.sym", "noconn.sym",
+                "lab_pin.sym",
+                "gnd.sym",
+                "vdd.sym",
+                "ipin.sym",
+                "opin.sym",
+                "iopin.sym",
+                "title.sym",
+                "launcher.sym",
+                "code.sym",
+                "code_shown.sym",
+                "noconn.sym",
             }
 
         def comp_iter() -> list[Component]:
@@ -457,12 +468,8 @@ class Schematic(_ElementContainerMixin):
                     "add_net: pass either coordinates or between=, not both"
                 )
             (ca, pa), (cb, pb) = between
-            x1, y1 = self.pin_position(
-                ca, pa, libs, case_insensitive=case_insensitive
-            )
-            x2, y2 = self.pin_position(
-                cb, pb, libs, case_insensitive=case_insensitive
-            )
+            x1, y1 = self.pin_position(ca, pa, libs, case_insensitive=case_insensitive)
+            x2, y2 = self.pin_position(cb, pb, libs, case_insensitive=case_insensitive)
             if x1 != x2 and y1 != y2:
                 raise ValueError(
                     f"Pins are not orthogonally aligned: "
@@ -535,9 +542,7 @@ class Schematic(_ElementContainerMixin):
         comp = self.get_component(comp_name)
         if comp is None:
             raise ValueError(f"Component '{comp_name}' not found")
-        return get_pin_position(
-            comp, pin_name, libs, case_insensitive=case_insensitive
-        )
+        return get_pin_position(comp, pin_name, libs, case_insensitive=case_insensitive)
 
     def pin_side(
         self,
@@ -555,8 +560,7 @@ class Schematic(_ElementContainerMixin):
         sym = libs.resolve(comp.symbol)
         if sym is None:
             raise ValueError(
-                f"Cannot resolve symbol {comp.symbol!r} for component "
-                f"{comp_name!r}"
+                f"Cannot resolve symbol {comp.symbol!r} for component {comp_name!r}"
             )
         return sym.pin_side(
             pin_name,
@@ -583,7 +587,11 @@ class Schematic(_ElementContainerMixin):
         from pyxschem.generate import connect_pin
 
         return connect_pin(
-            self, comp_name, pin_name, label, libs,
+            self,
+            comp_name,
+            pin_name,
+            label,
+            libs,
             case_insensitive=case_insensitive,
         )
 

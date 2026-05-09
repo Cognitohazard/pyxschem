@@ -157,8 +157,7 @@ class Symbol(_ElementContainerMixin):
         bbox = bbox_from_elements(self._elements)
         if bbox is None:
             raise ValueError(
-                f"Symbol has no graphical extent — cannot classify pin "
-                f"{pin_name!r}"
+                f"Symbol has no graphical extent — cannot classify pin {pin_name!r}"
             )
         return pin_side(pin.x, pin.y, bbox, rotation, mirror)
 

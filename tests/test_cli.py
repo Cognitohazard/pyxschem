@@ -80,17 +80,16 @@ class TestCommand:
 class TestNetlistText:
     def test_returns_string(self, tmp_path):
         cli = XschemCLI()
-        text = cli.netlist_text(FIXTURES / "real" / "nand2.sch",
-                                 output_dir=tmp_path)
+        text = cli.netlist_text(FIXTURES / "real" / "nand2.sch", output_dir=tmp_path)
         assert isinstance(text, str)
         assert text  # non-empty
 
     def test_matches_path_read_text(self, tmp_path):
         cli = XschemCLI()
-        path = cli.netlist(FIXTURES / "real" / "nand2.sch",
-                            output_dir=tmp_path)
+        path = cli.netlist(FIXTURES / "real" / "nand2.sch", output_dir=tmp_path)
         text_via_helper = cli.netlist_text(
-            FIXTURES / "real" / "nand2.sch", output_dir=tmp_path)
+            FIXTURES / "real" / "nand2.sch", output_dir=tmp_path
+        )
         assert text_via_helper == path.read_text(encoding="utf-8")
 
 
@@ -162,6 +161,7 @@ class TestRunControls:
         """xschem with an unrecognised flag wedges silently; the
         timeout must abort instead of hanging the caller forever."""
         import subprocess as sp
+
         cli = XschemCLI()
         with pytest.raises(sp.TimeoutExpired):
             cli.run(["--this-flag-makes-xschem-hang"], timeout=2.0)
@@ -197,8 +197,9 @@ class TestRunControls:
         from pyxschem import Schematic
 
         sch = Schematic.new()
-        sch.add_component("res.sym", x=100, y=-100,
-                           attributes={"name": "R1", "value": "1k"})
+        sch.add_component(
+            "res.sym", x=100, y=-100, attributes={"name": "R1", "value": "1k"}
+        )
         rel_dir = tmp_path / "rel"
         rel_dir.mkdir()
         sch.save(rel_dir / "rel.sch")
@@ -208,7 +209,6 @@ class TestRunControls:
             "rel.sch",
             output_dir=tmp_path,
             cwd=rel_dir,
-            env={"XSCHEM_LIBRARY_PATH":
-                 "/usr/share/xschem/xschem_library"},
+            env={"XSCHEM_LIBRARY_PATH": "/usr/share/xschem/xschem_library"},
         )
         assert "R1" in text

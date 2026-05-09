@@ -186,9 +186,7 @@ class Validator:
                 )
         return issues
 
-    def _check_floating_nets(
-        self, gq: GeometryQuery | None
-    ) -> list[ValidationIssue]:
+    def _check_floating_nets(self, gq: GeometryQuery | None) -> list[ValidationIssue]:
         # An endpoint is "connected" if any of:
         #  - it sits on a component pin (rotation-aware via gq)
         #  - it touches another net's endpoint
@@ -286,8 +284,7 @@ class Validator:
                     severity="warning",
                     category="unconnected_pin",
                     message=(
-                        f"Pin '{pin_name}' of '{comp_label}'"
-                        f" at ({px}, {py}) has no net"
+                        f"Pin '{pin_name}' of '{comp_label}' at ({px}, {py}) has no net"
                     ),
                     element=None,
                 )

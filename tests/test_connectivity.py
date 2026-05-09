@@ -192,8 +192,8 @@ def _label_symbol() -> Symbol:
     return Symbol.from_text(
         "v {xschem version=3.4.5 file_version=1.2}\n"
         "G {}\n"
-        "K {type=label net_name=true format=\"*.alias @lab\" "
-        "template=\"name=p1 lab=xxx\"}\n"
+        'K {type=label net_name=true format="*.alias @lab" '
+        'template="name=p1 lab=xxx"}\n'
         "V {}\nS {}\nE {}\n"
         "B 5 -2.5 -2.5 2.5 2.5 {name=p dir=in}\n"
     )
@@ -206,8 +206,9 @@ class TestNetNameFromLabelSymbol:
         libs = mock_libs(("res.sym", res), ("lab_pin.sym", _label_symbol()))
         sch = Schematic.new()
         sch.add_component("res.sym", 100, -100, attributes={"name": "R1"})
-        sch.add_component("lab_pin.sym", 100, -100,
-                           attributes={"name": "lp_1", "lab": "VDD"})
+        sch.add_component(
+            "lab_pin.sym", 100, -100, attributes={"name": "lp_1", "lab": "VDD"}
+        )
         nets = connectivity_from_schematic(sch, libs)
         names = {n.net_name for n in nets}
         assert "VDD" in names
@@ -219,8 +220,9 @@ class TestNetNameFromLabelSymbol:
         res.add_pin("P", "in", 0, 0)
         libs = mock_libs(("res.sym", res))
         sch = Schematic.new()
-        sch.add_component("res.sym", 100, -100,
-                           attributes={"name": "R1", "lab": "FAKE"})
+        sch.add_component(
+            "res.sym", 100, -100, attributes={"name": "R1", "lab": "FAKE"}
+        )
         nets = connectivity_from_schematic(sch, libs)
         names = {n.net_name for n in nets}
         assert "FAKE" not in names
@@ -230,8 +232,8 @@ class TestNetNameFromLabelSymbol:
         port = Symbol.from_text(
             "v {xschem version=3.4.5 file_version=1.2}\n"
             "G {}\n"
-            "K {type=port net_name=true format=\"*.ipin @lab\" "
-            "template=\"name=p1 lab=xxx\"}\n"
+            'K {type=port net_name=true format="*.ipin @lab" '
+            'template="name=p1 lab=xxx"}\n'
             "V {}\nS {}\nE {}\n"
             "B 5 -2.5 -2.5 2.5 2.5 {name=p dir=in}\n"
         )
@@ -240,7 +242,6 @@ class TestNetNameFromLabelSymbol:
         libs = mock_libs(("res.sym", res), ("ipin.sym", port))
         sch = Schematic.new()
         sch.add_component("res.sym", 0, 0, attributes={"name": "R1"})
-        sch.add_component("ipin.sym", 0, 0,
-                           attributes={"name": "p1", "lab": "INPUT"})
+        sch.add_component("ipin.sym", 0, 0, attributes={"name": "p1", "lab": "INPUT"})
         nets = connectivity_from_schematic(sch, libs)
         assert "INPUT" in {n.net_name for n in nets}

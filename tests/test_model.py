@@ -527,8 +527,7 @@ class TestHeader:
         assert h.get_block("K") == "type=subcircuit format=foo"
 
     def test_set_block_inserts_when_missing(self):
-        h = Header(raw_lines=["v {xschem version=3.4.5 file_version=1.2}",
-                                "E {}"])
+        h = Header(raw_lines=["v {xschem version=3.4.5 file_version=1.2}", "E {}"])
         h.set_block("K", "type=subcircuit")
         # Inserted before the trailing E line.
         joined = "\n".join(h.raw_lines)
@@ -541,8 +540,7 @@ class TestHeader:
 
     def test_set_k_attributes_round_trips(self):
         h = Header.default_schematic()
-        h.set_k_attributes({"type": "subcircuit",
-                              "format": "@name @pinlist @symname"})
+        h.set_k_attributes({"type": "subcircuit", "format": "@name @pinlist @symname"})
         attrs = h.k_attributes()
         assert attrs["type"] == "subcircuit"
         assert attrs["format"] == "@name @pinlist @symname"

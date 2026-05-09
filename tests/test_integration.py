@@ -524,22 +524,22 @@ class TestEndToEndWorkflow:
 #     audit + subcircuit_metadata + subcircuit_ports + bom + transform_components
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.skipif(not SYSTEM_DEVICES_DIR.is_dir(), reason="system library not found")
 class TestNewAPIIntegration:
-    def test_subcircuit_round_trip_with_metadata_and_ports(
-        self, tmp_path, system_libs
-    ):
+    def test_subcircuit_round_trip_with_metadata_and_ports(self, tmp_path, system_libs):
         """Author a sub-schematic with explicit ports and metadata,
         save it, reload, and verify ports + K-block survive."""
         from pyxschem import Schematic
 
         sch = Schematic.new()
-        sch.add_component("ipin.sym", 100, -200,
-                           attributes={"name": "p1", "lab": "IN"})
-        sch.add_component("opin.sym", 500, -200,
-                           attributes={"name": "p2", "lab": "OUT"})
-        sch.add_component("res.sym", 300, -200,
-                           attributes={"name": "R1", "value": "1k"})
+        sch.add_component("ipin.sym", 100, -200, attributes={"name": "p1", "lab": "IN"})
+        sch.add_component(
+            "opin.sym", 500, -200, attributes={"name": "p2", "lab": "OUT"}
+        )
+        sch.add_component(
+            "res.sym", 300, -200, attributes={"name": "R1", "value": "1k"}
+        )
         sch.set_subcircuit_metadata(format="@name @pinlist @symname")
 
         out = tmp_path / "dut.sch"
@@ -556,18 +556,17 @@ class TestNewAPIIntegration:
         from pyxschem import Schematic, audit_tree
 
         sch_ok = Schematic.new()
-        sch_ok.add_component("devices/res.sym", 0, 0,
-                              attributes={"name": "R1", "value": "1k"})
+        sch_ok.add_component(
+            "devices/res.sym", 0, 0, attributes={"name": "R1", "value": "1k"}
+        )
         sch_ok.save(tmp_path / "ok.sch")
 
         sch_bad = Schematic.new()
-        sch_bad.add_component("devices/res.sym", 0, 0,
-                               attributes={"name": "R2"})
+        sch_bad.add_component("devices/res.sym", 0, 0, attributes={"name": "R2"})
         sch_bad.save(tmp_path / "bad.sch")
 
         sch_unres = Schematic.new()
-        sch_unres.add_component("missing_xyz_int.sym", 0, 0,
-                                  attributes={"name": "X1"})
+        sch_unres.add_component("missing_xyz_int.sym", 0, 0, attributes={"name": "X1"})
         sch_unres.save(tmp_path / "unres.sch")
 
         rep = audit_tree(tmp_path, system_libs)
@@ -582,15 +581,23 @@ class TestNewAPIIntegration:
         from pyxschem import Schematic, connectivity_from_schematic
 
         sch = Schematic.new()
-        sch.add_component("devices/nmos4.sym", 100, -100,
-                           attributes={"name": "M1", "model": "n",
-                                       "w": "1u", "l": "1u", "m": "1"})
-        sch.add_component("devices/nmos4.sym", 300, -100,
-                           attributes={"name": "M2", "model": "n",
-                                       "w": "1u", "l": "1u", "m": "1"})
+        sch.add_component(
+            "devices/nmos4.sym",
+            100,
+            -100,
+            attributes={"name": "M1", "model": "n", "w": "1u", "l": "1u", "m": "1"},
+        )
+        sch.add_component(
+            "devices/nmos4.sym",
+            300,
+            -100,
+            attributes={"name": "M2", "model": "n", "w": "1u", "l": "1u", "m": "1"},
+        )
 
-        before_nets = {nc.net_name: tuple(sorted(nc.pins))
-                          for nc in connectivity_from_schematic(sch, system_libs)}
+        before_nets = {
+            nc.net_name: tuple(sorted(nc.pins))
+            for nc in connectivity_from_schematic(sch, system_libs)
+        }
         n = sch.transform_components(
             symbol="devices/nmos4.sym",
             attr_remap={"model": {"n": "nmos_lvt"}},
@@ -604,8 +611,10 @@ class TestNewAPIIntegration:
         )
         assert n2 == 0
 
-        after_nets = {nc.net_name: tuple(sorted(nc.pins))
-                         for nc in connectivity_from_schematic(sch, system_libs)}
+        after_nets = {
+            nc.net_name: tuple(sorted(nc.pins))
+            for nc in connectivity_from_schematic(sch, system_libs)
+        }
         assert before_nets == after_nets
 
     def test_bom_on_real_fixture(self, system_libs):
@@ -617,6 +626,5 @@ class TestNewAPIIntegration:
         assert all(isinstance(e, BomEntry) for e in bom)
         # Helper symbols (lab_pin / launcher / title / code) must not
         # appear in the BOM.
-        forbidden = {"lab_pin.sym", "launcher.sym", "code_shown.sym",
-                      "title.sym"}
+        forbidden = {"lab_pin.sym", "launcher.sym", "code_shown.sym", "title.sym"}
         assert not (forbidden & {e.symbol for e in bom})

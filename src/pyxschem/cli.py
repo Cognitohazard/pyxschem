@@ -312,9 +312,7 @@ class XschemCLI:
             details = tcl_msg.strip()
             if preceding.strip():
                 details = f"{details}\n--- preceding stderr ---\n{preceding.rstrip()}"
-            raise RuntimeError(
-                f"xschem Tcl command raised an error: {details}"
-            )
+            raise RuntimeError(f"xschem Tcl command raised an error: {details}")
         return result.stdout
 
     def run(
@@ -484,5 +482,3 @@ def _check_netlist_health(path: Path, stdout: str, stderr: str) -> None:
                 f"missing components.\n--- xschem output ---\n"
                 f"{combined.strip()[-1200:]}"
             )
-
-

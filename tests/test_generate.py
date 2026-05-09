@@ -255,15 +255,16 @@ class TestConnectLabPinResolution:
         (lib_dir / "res.sym").write_text(
             "v {xschem version=3.4.5 file_version=1.2}\n"
             "G {}\n"
-            "K {type=resistor template=\"name=R1 value=1k\"}\n"
+            'K {type=resistor template="name=R1 value=1k"}\n'
             "V {}\nS {}\nE {}\n"
             "B 5 -2.5 -32.5 2.5 -27.5 {name=P dir=inout}\n"
             "B 5 -2.5 27.5 2.5 32.5 {name=M dir=inout}\n"
         )
         libs = SymbolLibrary([lib_dir])
         sch = Schematic.new()
-        sch.add_component("res.sym", 100, -100,
-                           attributes={"name": "R1", "value": "1k"})
+        sch.add_component(
+            "res.sym", 100, -100, attributes={"name": "R1", "value": "1k"}
+        )
         with pytest.raises(ValueError, match="lab_pin"):
             sch.connect("R1", "P", "VDD", libs)
 
@@ -272,8 +273,9 @@ class TestConnectLabPinResolution:
         sch = Schematic.new()
         # Component anchor at fractional coordinates → lab_pin must
         # land exactly on the pin, not be truncated to int.
-        sch.add_component("resistor.sym", 102.5, -107.5,
-                           attributes={"name": "R1", "value": "1k"})
+        sch.add_component(
+            "resistor.sym", 102.5, -107.5, attributes={"name": "R1", "value": "1k"}
+        )
         comp = sch.connect("R1", "P", "VDD", libs)
         # resistor.sym pin P is at (0, -30); anchor (102.5, -107.5) +
         # rotation 0 → (102.5, -137.5).
@@ -320,8 +322,7 @@ class TestCaseInsensitivePinLookup:
             "C {resistor.sym} 200 -100 0 0 {name=R1}\n"
             "C {resistor.sym} 400 -100 0 0 {name=R2}\n"
         )
-        net = sch.add_wire("R1", "p", "R2", "p", libs,
-                            case_insensitive=True)
+        net = sch.add_wire("R1", "p", "R2", "p", libs, case_insensitive=True)
         assert net.y1 == net.y2
 
     def test_pin_error_includes_rotation(self):
