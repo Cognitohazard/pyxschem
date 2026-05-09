@@ -81,6 +81,7 @@ class Validator:
         issues: list[ValidationIssue] = []
         issues.extend(self._check_duplicate_names())
         issues.extend(self._check_missing_names())
+        issues.extend(self._check_net_geometry())
         if self._libs is not None:
             gq = self._get_geometry_query()
             issues.extend(self._check_floating_nets(gq))
@@ -92,6 +93,13 @@ class Validator:
             issues.extend(self._check_floating_nets(None))
         issues.extend(self._check_unintended_junctions())
         return ValidationResult(issues=issues)
+
+    def _check_net_geometry(self) -> list[ValidationIssue]:
+        """Sweep every net for diagonal/zero-length geometry."""
+        issues: list[ValidationIssue] = []
+        for n in self._sch.nets:
+            issues.extend(self.check_net(n.x1, n.y1, n.x2, n.y2, n.label))
+        return issues
 
     def check_net(
         self,

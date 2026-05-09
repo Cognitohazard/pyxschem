@@ -26,7 +26,7 @@ from pyxschem.diff import (
     TextChange,
     diff_schematics,
 )
-from pyxschem.geometry import BBox, GeometryQuery
+from pyxschem.geometry import BBox, GeometryQuery, pin_side
 from pyxschem.hierarchy import HierarchyNode
 from pyxschem.library import SymbolLibrary, XschemConfig
 from pyxschem.model import (
@@ -82,6 +82,7 @@ __all__ = [
     "connectivity_from_schematic",
     "diff_schematics",
     "parse_attributes",
+    "pin_side",
     "serialize_attributes",
     "validate",
 ]

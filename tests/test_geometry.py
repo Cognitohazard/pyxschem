@@ -7,6 +7,7 @@ import pytest
 from pyxschem.geometry import (
     BBox,
     bbox_from_elements,
+    pin_side,
     point_on_segment,
     segment_crosses_bbox,
     segments_intersect,
@@ -310,3 +311,49 @@ class TestSegmentsIntersect:
 
     def test_miss(self):
         assert segments_intersect(0, 0, 3, 0, 5, 1, 5, 10) is None
+
+
+# ---------------------------------------------------------------------------
+# pin_side — outward lead direction under rotation/mirror
+# ---------------------------------------------------------------------------
+
+
+class TestPinSide:
+    """A bbox of (-10,-30,10,30) with pins on each edge — the
+    classification must follow rotation/mirror consistently with
+    transform_point."""
+
+    BBOX = BBox(-10, -30, 10, 30)
+
+    def test_local_sides(self):
+        # In local coords: y grows downward, so the pin at (0, -30) is
+        # at the top of the body (xschem screen "up").
+        assert pin_side(0, -30, self.BBOX) == "up"
+        assert pin_side(0, 30, self.BBOX) == "down"
+        assert pin_side(10, 0, self.BBOX) == "right"
+        assert pin_side(-10, 0, self.BBOX) == "left"
+
+    def test_rotation_90(self):
+        # rot=1 (xschem 90° rotation) sends (px,py) → (-py, px).
+        # Mapping: up→right, down→left, right→down, left→up.
+        assert pin_side(0, -30, self.BBOX, rotation=1) == "right"
+        assert pin_side(0, 30, self.BBOX, rotation=1) == "left"
+        assert pin_side(10, 0, self.BBOX, rotation=1) == "down"
+        assert pin_side(-10, 0, self.BBOX, rotation=1) == "up"
+
+    def test_rotation_180(self):
+        assert pin_side(0, -30, self.BBOX, rotation=2) == "down"
+        assert pin_side(10, 0, self.BBOX, rotation=2) == "left"
+
+    def test_mirror(self):
+        # Mirror flips x; left and right swap, top/bottom stay.
+        assert pin_side(10, 0, self.BBOX, mirror=1) == "left"
+        assert pin_side(-10, 0, self.BBOX, mirror=1) == "right"
+        assert pin_side(0, -30, self.BBOX, mirror=1) == "up"
+
+    def test_diagonal_pin_picks_dominant_axis(self):
+        # Pin nearer the right edge than the top, even though both are
+        # off-center, must classify as "right".
+        assert pin_side(10, -10, self.BBOX) == "right"
+        # And vice versa.
+        assert pin_side(2, -30, self.BBOX) == "up"

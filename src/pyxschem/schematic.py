@@ -436,10 +436,15 @@ class Schematic(_ElementContainerMixin):
         * **Coordinates** (the original): ``add_net(x1, y1, x2, y2)``.
         * **Pin endpoints**: ``add_net(between=(("R1","P"),("C1","p")),
           libs=L)`` resolves both pin coordinates through ``libs`` and
-          lays the segment. Pins must be orthogonally aligned —
-          xschem wires are horizontal or vertical — otherwise raises
-          ``ValueError``. This is also the path used by
-          :meth:`add_wire` (which is now a thin alias).
+          lays the segment. Pins must be orthogonally aligned;
+          ``ValueError`` otherwise. xschem itself is happy to draw a
+          diagonal wire, but pyxschem refuses by default because
+          (a) xschem's validator warns on it, and (b) most diagonal
+          requests are mistakes by callers who didn't realise the
+          two pins disagree on rotation. If you genuinely want a
+          diagonal segment, use the four-coordinate form. This is
+          also the path used by :meth:`add_wire` (which is now a
+          thin alias).
 
         ``label`` and ``case_insensitive`` apply to either form.
         """
@@ -531,6 +536,32 @@ class Schematic(_ElementContainerMixin):
             raise ValueError(f"Component '{comp_name}' not found")
         return get_pin_position(
             comp, pin_name, libs, case_insensitive=case_insensitive
+        )
+
+    def pin_side(
+        self,
+        comp_name: str,
+        pin_name: str,
+        libs: SymbolLibrary,
+        *,
+        case_insensitive: bool = False,
+    ) -> Literal["left", "right", "up", "down"]:
+        """Classify which side of the placed bounding box a pin sits
+        on. Returns ``"left" | "right" | "up" | "down"`` accounting
+        for the component's rotation and mirror.
+        """
+        comp = self._require_component(comp_name)
+        sym = libs.resolve(comp.symbol)
+        if sym is None:
+            raise ValueError(
+                f"Cannot resolve symbol {comp.symbol!r} for component "
+                f"{comp_name!r}"
+            )
+        return sym.pin_side(
+            pin_name,
+            rotation=comp.rotation,
+            mirror=comp.mirror,
+            case_insensitive=case_insensitive,
         )
 
     def connect(

@@ -272,6 +272,40 @@ class TestSymbolBBox:
         assert bb.y2 == 15
 
 
+class TestPinSide:
+    def _two_pin_symbol(self) -> Symbol:
+        sym = Symbol.new()
+        sym.add_box(layer=4, x1=-10, y1=-25, x2=10, y2=25)  # body
+        sym.add_pin("P", "in", 0, -30)   # top
+        sym.add_pin("M", "out", 0, 30)   # bottom
+        return sym
+
+    def test_local_default_rotation(self):
+        sym = self._two_pin_symbol()
+        assert sym.pin_side("P") == "up"
+        assert sym.pin_side("M") == "down"
+
+    def test_rotation_swaps_to_horizontal(self):
+        sym = self._two_pin_symbol()
+        # P sits on the "up" side; rotating maps up→right→down→left.
+        assert sym.pin_side("P", rotation=1) == "right"
+        assert sym.pin_side("P", rotation=2) == "down"
+        assert sym.pin_side("P", rotation=3) == "left"
+        # M sits on the "down" side; opposite cycle.
+        assert sym.pin_side("M", rotation=1) == "left"
+
+    def test_case_insensitive(self):
+        sym = self._two_pin_symbol()
+        with pytest.raises(ValueError):
+            sym.pin_side("p")
+        assert sym.pin_side("p", case_insensitive=True) == "up"
+
+    def test_unknown_pin_raises(self):
+        sym = self._two_pin_symbol()
+        with pytest.raises(ValueError):
+            sym.pin_side("Z")
+
+
 class TestExports:
     def test_import_symbol(self):
         from pyxschem import Pin, Symbol

@@ -398,3 +398,41 @@ class TestFloatingNetRotationAware:
         # is, and that's fine.
         for i in floating:
             assert "(130, -100)" not in i.message
+
+
+class TestNetGeometryFoldedIntoValidate:
+    """``diagonal_wire`` and ``zero_length_net`` were originally only
+    reachable via :meth:`Validator.check_net`. They are now folded into
+    the main :func:`validate` pass."""
+
+    def test_validate_reports_diagonal_wire(self):
+        sch = Schematic.new()
+        sch.add_net(0, 0, 100, 100)  # diagonal
+        result = validate(sch)
+        cats = {i.category for i in result.issues}
+        assert "diagonal_wire" in cats
+
+    def test_validate_reports_zero_length_net(self):
+        sch = Schematic.new()
+        sch.add_net(50, 50, 50, 50)  # degenerate
+        result = validate(sch)
+        cats = {i.category for i in result.issues}
+        assert "zero_length_net" in cats
+
+    def test_zero_length_net_with_label_is_ok(self):
+        """A zero-length labelled net is a deliberate label-only
+        marker; not an issue."""
+        sch = Schematic.new()
+        sch.add_net(50, 50, 50, 50, label="VDD")
+        result = validate(sch)
+        cats = {i.category for i in result.issues}
+        assert "zero_length_net" not in cats
+
+    def test_orthogonal_net_passes(self):
+        sch = Schematic.new()
+        sch.add_net(0, 0, 100, 0)  # horizontal — fine
+        sch.add_net(0, 0, 0, 100)  # vertical — fine
+        result = validate(sch)
+        cats = {i.category for i in result.issues}
+        assert "diagonal_wire" not in cats
+        assert "zero_length_net" not in cats

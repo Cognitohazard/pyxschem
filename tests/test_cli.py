@@ -144,3 +144,71 @@ class TestSession:
             stdout_first = s.stdout
             s.flush()
             assert s.stdout == stdout_first
+
+
+class TestRunControls:
+    """Cover the controls added when fixing the friction surfaced
+    in the workspace stress tests: timeout, rcfile, no_rcload, and
+    command-level Tcl error propagation."""
+
+    def test_command_raises_on_tcl_error(self):
+        """xschem's top-level Tcl runner catches errors silently and
+        exits 0; the catch-wrapper must surface them as RuntimeError."""
+        cli = XschemCLI()
+        with pytest.raises(RuntimeError, match="distinct-failure-msg"):
+            cli.command("error {distinct-failure-msg}")
+
+    def test_run_timeout_kicks_in_on_hang(self):
+        """xschem with an unrecognised flag wedges silently; the
+        timeout must abort instead of hanging the caller forever."""
+        import subprocess as sp
+        cli = XschemCLI()
+        with pytest.raises(sp.TimeoutExpired):
+            cli.run(["--this-flag-makes-xschem-hang"], timeout=2.0)
+
+    @pytest.mark.parametrize("timeout", [None, 0, -1])
+    def test_run_timeout_disables_when_non_positive_or_none(self, timeout):
+        """``None`` and any non-positive number must reach
+        subprocess.run as None — earlier the CLI did ``timeout > 0``
+        which crashed with TypeError on None."""
+        cli = XschemCLI()
+        out = cli.run(["--version"], timeout=timeout)
+        assert "XSCHEM" in out.stdout
+
+    def test_no_rcload_keeps_user_env(self):
+        """With ``no_rcload=True`` xschem skips the host xschemrc,
+        so ``XSCHEM_LIBRARY_PATH`` reflects only what the caller
+        passed via env=."""
+        cli = XschemCLI()
+        sentinel = "/tmp/sentinel/no-rcload"
+        out = cli.command(
+            'puts "PATH=$env(XSCHEM_LIBRARY_PATH)"',
+            env={"XSCHEM_LIBRARY_PATH": sentinel},
+            no_rcload=True,
+        )
+        assert sentinel in out
+
+    def test_netlist_with_cwd_resolves_relative_input(self, tmp_path):
+        """When ``cwd`` is set, a relative schematic path must be
+        resolved by xschem against ``cwd`` rather than the calling
+        process's working directory. Regression: fixed by aligning
+        the ``PWD`` env variable with ``cwd`` in :meth:`run`.
+        """
+        from pyxschem import Schematic
+
+        sch = Schematic.new()
+        sch.add_component("res.sym", x=100, y=-100,
+                           attributes={"name": "R1", "value": "1k"})
+        rel_dir = tmp_path / "rel"
+        rel_dir.mkdir()
+        sch.save(rel_dir / "rel.sch")
+
+        cli = XschemCLI()
+        text = cli.netlist_text(
+            "rel.sch",
+            output_dir=tmp_path,
+            cwd=rel_dir,
+            env={"XSCHEM_LIBRARY_PATH":
+                 "/usr/share/xschem/xschem_library"},
+        )
+        assert "R1" in text

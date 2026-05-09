@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from pyxschem._base import _ElementContainerMixin
 from pyxschem.attributes import parse_attributes
@@ -29,6 +30,35 @@ class Pin:
     direction: str  # "in", "out", "inout"
     x: float
     y: float
+
+
+def _resolve_pin(
+    pins: list[Pin],
+    pin_name: str,
+    *,
+    case_insensitive: bool = False,
+) -> Pin:
+    """Find a pin by name, with the same matching rules as
+    :func:`pyxschem.generate.get_pin_position` (exact first; in
+    ``case_insensitive`` mode, fold case and reject ambiguous matches).
+    """
+    for p in pins:
+        if p.name == pin_name:
+            return p
+    if case_insensitive:
+        target = pin_name.lower()
+        matches = [p for p in pins if p.name.lower() == target]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise ValueError(
+                f"Pin {pin_name!r} is ambiguous (case-insensitive matches: "
+                f"{[p.name for p in matches]})"
+            )
+    available = [p.name for p in pins]
+    raise ValueError(
+        f"Pin {pin_name!r} not found on symbol. Available pins: {available}"
+    )
 
 
 class Symbol(_ElementContainerMixin):
@@ -106,6 +136,31 @@ class Symbol(_ElementContainerMixin):
         if not raw:
             return {}
         return parse_attributes(raw)
+
+    def pin_side(
+        self,
+        pin_name: str,
+        rotation: int = 0,
+        mirror: int = 0,
+        case_insensitive: bool = False,
+    ) -> Literal["left", "right", "up", "down"]:
+        """Classify which side of the symbol's body a pin sits on.
+
+        Returns ``"left" | "right" | "up" | "down"`` — the outward
+        lead direction in xschem screen coordinates after the given
+        ``rotation`` / ``mirror``. Default rotation/mirror gives the
+        side relative to the symbol's local frame.
+        """
+        from pyxschem.geometry import bbox_from_elements, pin_side
+
+        pin = _resolve_pin(self.pins, pin_name, case_insensitive=case_insensitive)
+        bbox = bbox_from_elements(self._elements)
+        if bbox is None:
+            raise ValueError(
+                f"Symbol has no graphical extent — cannot classify pin "
+                f"{pin_name!r}"
+            )
+        return pin_side(pin.x, pin.y, bbox, rotation, mirror)
 
     def add_pin(
         self,

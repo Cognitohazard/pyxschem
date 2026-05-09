@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pyxschem.model import Arc, Box, Element, GraphicLine, Polygon
 
@@ -160,6 +160,43 @@ def transform_bbox(
     xs = [p[0] for p in transformed]
     ys = [p[1] for p in transformed]
     return BBox(min(xs), min(ys), max(xs), max(ys))
+
+
+def pin_side(
+    px: float,
+    py: float,
+    bbox: BBox,
+    rotation: int = 0,
+    mirror: int = 0,
+) -> Literal["left", "right", "up", "down"]:
+    """Classify which side of a placed bounding box a pin sits on.
+
+    Useful for label-side selection, lead direction, and routing. The
+    returned direction is the *outward* lead direction in xschem
+    screen coordinates (positive y = down).
+
+    Args:
+        px, py: Pin coordinates in the symbol's local frame.
+        bbox: Symbol's local bounding box.
+        rotation, mirror: Same conventions as :func:`transform_point`.
+
+    Returns:
+        ``"left" | "right" | "up" | "down"``.
+    """
+    cx, cy = bbox.center
+    dx = px - cx
+    dy = py - cy
+    half_w = max(bbox.width / 2, 1e-9)
+    half_h = max(bbox.height / 2, 1e-9)
+    if abs(dx) / half_w >= abs(dy) / half_h:
+        raw = (1.0 if dx >= 0 else -1.0, 0.0)
+    else:
+        raw = (0.0, 1.0 if dy >= 0 else -1.0)
+
+    rx, ry = transform_point(raw[0], raw[1], 0, 0, rotation, mirror)
+    if abs(rx) >= abs(ry):
+        return "right" if rx > 0 else "left"
+    return "down" if ry > 0 else "up"
 
 
 def bbox_from_elements(elements: Sequence[Element]) -> BBox | None:

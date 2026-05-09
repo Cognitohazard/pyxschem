@@ -131,8 +131,18 @@ sch.connect("C1", "p", "VOUT", libs, case_insensitive=True)
 sch.add_net(100, -200, 300, -200)
 sch.add_net(between=(("R1", "P"), ("R2", "M")), libs=libs)
 
-# add_wire is a thin alias of the latter form.
+# add_wire is a thin alias of the latter form. The between=
+# form requires the two pins to be orthogonally aligned —
+# pyxschem refuses to lay a diagonal wire even though xschem
+# itself would accept it. Use the four-coordinate form if you
+# really want a diagonal segment.
 sch.add_wire("R1", "P", "R2", "M", libs)
+
+# Classify which side of the body a pin extends from. Useful
+# for routing decisions and label placement. Honours the
+# component's rotation/mirror.
+side = sch.pin_side("R1", "P", libs)         # "up"/"down"/"left"/"right"
+side_local = sym.pin_side("P")               # same, local frame
 ```
 
 ### Subcircuit authoring
@@ -218,13 +228,28 @@ cli = XschemCLI(binary="/usr/bin/xschem")
 netlist_path = cli.netlist("amp.sch", format="spice", output_dir="build/")
 print(netlist_path.read_text())
 
-# Override the library search path for an isolated build
+# Override the library search path for an isolated build. env=
+# alone does NOT skip the host xschemrc — pair with no_rcload=
+# (or rcfile=) for full isolation.
 netlist_path = cli.netlist(
     "amp.sch",
     format="spice",
     output_dir="build/",
     env={"XSCHEM_LIBRARY_PATH": "/path/to/libs:/path/to/devices"},
+    no_rcload=True,
 )
+
+# Drive xschem from a private design directory: cwd= aligns
+# both the OS-level cwd and xschem's internal $PWD so a
+# relative schematic path resolves where you'd expect.
+netlist_path = cli.netlist(
+    "amp.sch", output_dir="build/", cwd="/path/to/design",
+)
+
+# Every call accepts a hard timeout (default 120 s). xschem
+# wedges silently on some malformed flag combinations; the
+# timeout refuses to wait forever.
+cli.netlist("amp.sch", timeout=30)
 
 # Get the netlist as text directly.
 text = cli.netlist_text("amp.sch", output_dir="build/")
@@ -241,7 +266,9 @@ print(s.stdout)
 
 `netlist()` raises `RuntimeError` when xschem silently emits a broken
 netlist (unresolved symbols or a Tcl-evaluation error), so consumers
-do not unknowingly ship `IS MISSING !!!!` placeholders.
+do not unknowingly ship `IS MISSING !!!!` placeholders. `command()`
+wraps the user's Tcl in `catch` for the same reason — xschem swallows
+top-level Tcl errors otherwise.
 
 ## API Reference
 
