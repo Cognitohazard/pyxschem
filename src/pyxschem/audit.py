@@ -20,9 +20,13 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pyxschem.schematic import Schematic
 from pyxschem.validate import validate
+
+if TYPE_CHECKING:
+    from pyxschem.library import SymbolLibrary
 
 DEFAULT_VALUE_PREFIXES: frozenset[str] = frozenset({"R", "L", "C", "I", "V"})
 
@@ -106,7 +110,7 @@ class ProjectReport:
 
 def audit_tree(
     root: Path | str,
-    libs,  # SymbolLibrary; lazy-typed to avoid a hard import here
+    libs: SymbolLibrary,  # TYPE_CHECKING import keeps the runtime import lazy
     *,
     pattern: str = "*.sch",
     value_prefixes: Iterable[str] = DEFAULT_VALUE_PREFIXES,

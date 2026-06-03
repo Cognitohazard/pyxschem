@@ -9,6 +9,7 @@ build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.hypothesis/
 src/pyxschem/_version.py
 .coverage
 workspace/

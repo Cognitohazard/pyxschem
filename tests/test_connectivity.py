@@ -5,7 +5,9 @@ from __future__ import annotations
 from conftest import make_symbol, mock_libs
 
 from pyxschem.connectivity import (
+    NetAnalyzer,
     _parse_spice_netlist,
+    connectivity_from_netlist,
     connectivity_from_schematic,
 )
 from pyxschem.schematic import Schematic
@@ -245,3 +247,152 @@ class TestNetNameFromLabelSymbol:
         sch.add_component("ipin.sym", 0, 0, attributes={"name": "p1", "lab": "INPUT"})
         nets = connectivity_from_schematic(sch, libs)
         assert "INPUT" in {n.net_name for n in nets}
+
+
+# ---------------------------------------------------------------------------
+# More SPICE instance-prefix branches
+# ---------------------------------------------------------------------------
+
+
+class TestParseSpiceNetlistBranches:
+    def test_bjt_three_terminal(self):
+        # Q1 c b e model — 3 terminals named c/b/e (no substrate terminal).
+        result = _parse_spice_netlist("Q1 c b e mybjt\n")
+        nets = {nc.net_name: nc.pins for nc in result}
+        assert nets["c"] == [("Q1", "c")]
+        assert nets["b"] == [("Q1", "b")]
+        assert nets["e"] == [("Q1", "e")]
+
+    def test_current_source(self):
+        # I1 a b value — same p/m terminals as a voltage source.
+        result = _parse_spice_netlist("I1 a b 1m\n")
+        a_net = next(nc for nc in result if nc.net_name == "a")
+        b_net = next(nc for nc in result if nc.net_name == "b")
+        assert ("I1", "p") in a_net.pins
+        assert ("I1", "m") in b_net.pins
+
+    def test_subckt_port_count_mismatch_uses_positional_fallback(self):
+        # The .subckt declares 4 ports but the X instance lists only 2 nets,
+        # so port names cannot be matched; the parser falls back to
+        # positional pin0/pin1 naming.
+        text = ".subckt foo a b c d\n.ends foo\nX1 n1 n2 foo\n"
+        result = _parse_spice_netlist(text)
+        nets = {nc.net_name: nc.pins for nc in result}
+        assert nets["n1"] == [("X1", "pin0")]
+        assert nets["n2"] == [("X1", "pin1")]
+
+    def test_resistor_too_few_tokens_skipped(self):
+        # "R1 n1" has only 2 tokens (< 3) so the line is skipped entirely.
+        assert _parse_spice_netlist("R1 n1\n") == []
+
+    def test_mosfet_too_few_tokens_skipped(self):
+        # "M1 d g s" has 4 tokens but a MOSFET needs >= 6, so it is skipped.
+        assert _parse_spice_netlist("M1 d g s\n") == []
+
+    def test_unknown_prefix_skipped(self):
+        # A leading prefix the parser doesn't recognise is ignored.
+        assert _parse_spice_netlist("Z1 a b c\n") == []
+
+
+# ---------------------------------------------------------------------------
+# connectivity_from_netlist (file-based)
+# ---------------------------------------------------------------------------
+
+
+class TestConnectivityFromNetlist:
+    def test_parses_file_same_as_text(self, tmp_path):
+        # Writing the same SPICE text to a file and parsing via the public
+        # path-based API yields the same structure as the in-memory parser.
+        text = (
+            ".subckt inv in out vdd vss\n"
+            "M1 out in vdd vdd pmos\n"
+            "M2 out in vss vss nmos\n"
+            ".ends inv\n"
+            "X1 a b VDD GND inv\n"
+        )
+        path = tmp_path / "design.spice"
+        path.write_text(text, encoding="utf-8")
+
+        from_file = connectivity_from_netlist(path)
+        from_text = _parse_spice_netlist(text)
+
+        as_dict_file = {nc.net_name: nc.pins for nc in from_file}
+        as_dict_text = {nc.net_name: nc.pins for nc in from_text}
+        assert as_dict_file == as_dict_text
+        assert ("X1", "in") in as_dict_file["a"]
+
+    def test_accepts_str_path(self, tmp_path):
+        path = tmp_path / "r.net"
+        path.write_text("R1 n1 n2 1k\n", encoding="utf-8")
+        result = connectivity_from_netlist(str(path))
+        names = {nc.net_name for nc in result}
+        assert names == {"n1", "n2"}
+
+
+# ---------------------------------------------------------------------------
+# NetAnalyzer (pure-Python fallback, cli=None)
+# ---------------------------------------------------------------------------
+
+
+def _two_resistor_schematic():
+    """Schematic with R1 and R2 sharing net VDD; returns (sch, libs)."""
+    sym = make_symbol(
+        -5,
+        -5,
+        5,
+        5,
+        pins=[
+            Pin(name="P", direction="inout", x=0, y=-20),
+            Pin(name="N", direction="inout", x=0, y=20),
+        ],
+    )
+    libs = mock_libs(("res.sym", sym))
+    sch = Schematic.new()
+    sch.add_component("res.sym", x=0, y=0, attributes={"name": "R1"})
+    sch.add_component("res.sym", x=100, y=0, attributes={"name": "R2"})
+    # R1.P at (0, -20) and R2.P at (100, -20) both on VDD.
+    sch.add_net(0, -20, 0, -20, label="VDD")
+    sch.add_net(100, -20, 100, -20, label="VDD")
+    return sch, libs
+
+
+class TestNetAnalyzer:
+    def test_nets_uses_python_fallback_when_cli_none(self):
+        sch, libs = _two_resistor_schematic()
+        na = NetAnalyzer(sch, libs, cli=None)
+        nets = na.nets()
+        vdd = next(nc for nc in nets if nc.net_name == "VDD")
+        comp_names = {p[0] for p in vdd.pins}
+        assert comp_names == {"R1", "R2"}
+
+    def test_nets_is_cached(self):
+        sch, libs = _two_resistor_schematic()
+        na = NetAnalyzer(sch, libs, cli=None)
+        assert na.nets() is na.nets()
+
+    def test_net_for_pin_finds_shared_net(self):
+        sch, libs = _two_resistor_schematic()
+        na = NetAnalyzer(sch, libs, cli=None)
+        net = na.net_for_pin("R1", "P")
+        assert net is not None
+        assert net.net_name == "VDD"
+        assert na.net_for_pin("R2", "P") is net
+
+    def test_net_for_pin_unknown_returns_none(self):
+        sch, libs = _two_resistor_schematic()
+        na = NetAnalyzer(sch, libs, cli=None)
+        assert na.net_for_pin("R1", "NOPE") is None
+        assert na.net_for_pin("R9", "P") is None
+
+    def test_connected_pins_excludes_self(self):
+        sch, libs = _two_resistor_schematic()
+        na = NetAnalyzer(sch, libs, cli=None)
+        others = na.connected_pins("R1", "P")
+        assert ("R2", "P") in others
+        assert ("R1", "P") not in others
+
+    def test_connected_pins_unknown_returns_empty(self):
+        sch, libs = _two_resistor_schematic()
+        na = NetAnalyzer(sch, libs, cli=None)
+        assert na.connected_pins("R1", "NOPE") == []
+        assert na.connected_pins("R9", "P") == []

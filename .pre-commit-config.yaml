@@ -6,13 +6,18 @@ repos:
       - id: check-merge-conflict
       - id: check-toml
       - id: check-yaml
+      # xschem .sch/.sym fixtures are verbatim tool output (trailing whitespace
+      # and exact bytes are part of the round-trip contract) — don't rewrite them.
       - id: end-of-file-fixer
+        exclude: ^tests/fixtures/
       - id: mixed-line-ending
         args: [--fix=lf]
+        exclude: ^tests/fixtures/
       - id: trailing-whitespace
+        exclude: ^tests/fixtures/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.11
+    rev: v0.15.15
     hooks:
       - id: ruff-check
         args: [--fix]

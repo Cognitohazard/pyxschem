@@ -60,6 +60,12 @@ class _DirtyDict(dict):
 class _AutoDirtyMixin:
     """Auto-clear raw_line on field assignment; wrap attributes dicts."""
 
+    # Declared (without defaults) so type checkers know every subclass — all
+    # @dataclass elements — supplies these fields. Bare annotations create no
+    # class attributes, so runtime behaviour is unchanged.
+    raw_line: str | None
+    attributes: dict[str, str]
+
     def __setattr__(self, name: str, value: object) -> None:
         if name == "attributes" and isinstance(value, dict):
             value = _DirtyDict(value, _owner=self)

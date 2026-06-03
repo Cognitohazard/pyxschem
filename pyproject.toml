@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = ["hatchling>=1.27", "hatch-vcs>=0.4"]
 build-backend = "hatchling.build"
 
 [project]
@@ -30,14 +30,18 @@ classifiers = [
 ]
 
 [project.urls]
+Homepage = "https://github.com/Cognitohazard/pyxschem"
 Repository = "https://github.com/Cognitohazard/pyxschem"
 Issues = "https://github.com/Cognitohazard/pyxschem/issues"
+Changelog = "https://github.com/Cognitohazard/pyxschem/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "ruff>=0.4",
+    "pyright>=1.1",
+    "hypothesis>=6.0",
 ]
 
 [tool.hatch.version]
@@ -48,6 +52,19 @@ version-file = "src/pyxschem/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pyxschem"]
+
+[tool.hatch.build.targets.sdist]
+# Ship the package + test suite; keep dev/CI dotfiles out of the published sdist.
+exclude = [
+    "/.github",
+    "/.pre-commit-config.yaml",
+    "/.editorconfig",
+    "/.gitignore",
+    "/.gitattributes",
+    "/.python-version",
+    "/.hypothesis",
+    "/uv.lock",
+]
 
 [tool.pytest.ini_options]
 addopts = "--cov=pyxschem --cov-report=term-missing"
@@ -62,6 +79,12 @@ source = ["pyxschem"]
 [tool.coverage.report]
 show_missing = true
 skip_empty = true
+fail_under = 90
+
+[tool.pyright]
+include = ["src"]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"
 
 [tool.ruff]
 src = ["src"]
@@ -69,8 +92,16 @@ target-version = "py310"
 extend-exclude = ["src/pyxschem/_version.py"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "RUF", "PT", "C4", "A", "PGH"]
+
+[tool.ruff.lint.flake8-pytest-style]
+# Only require pytest.raises(...) to set match= for genuinely broad exceptions.
+raises-require-match-for = ["BaseException", "Exception"]
+
+[tool.ruff.format]
+docstring-code-format = true
 
 [tool.ruff.lint.per-file-ignores]
+# _version.py is already dropped via extend-exclude above.
+"src/*" = ["PT"]    # pytest-style rules target the test suite, not library code
 "tests/*" = ["F811"]
-"src/pyxschem/_version.py" = ["ALL"]

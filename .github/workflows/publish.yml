@@ -19,9 +19,23 @@ jobs:
           enable-cache: true
       - run: uv python install 3.12
       - run: uv sync --extra dev --locked
-      - run: uv run ruff check src/
+      - run: uv run ruff check src/ tests/
+      - run: uv run ruff format --check src/ tests/
+      - run: uv run pyright src/
       - run: uv run pytest -m "not integration"
       - run: uv build
+      - name: Smoke-test the built wheel imports and ships py.typed
+        run: |
+          uv run --no-project --with "$(ls dist/*.whl)" python - <<'PY'
+          import importlib.resources as res
+          import pyxschem
+          from pyxschem import NetAnalyzer, Schematic  # public API must import
+
+          print("pyxschem", pyxschem.__version__, NetAnalyzer, Schematic)
+          assert res.files("pyxschem").joinpath("py.typed").is_file(), (
+              "py.typed missing from built wheel"
+          )
+          PY
       - uses: actions/upload-artifact@v7
         with:
           name: dist
@@ -40,6 +54,9 @@ jobs:
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      # Pinned to a commit SHA: this is the only step that holds id-token: write
+      # (PyPI OIDC), so it must not run code from a mutable branch ref.
+      # Dependabot (github-actions ecosystem) keeps the SHA current.
+      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # release/v1
         with:
           attestations: true

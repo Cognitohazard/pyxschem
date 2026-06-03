@@ -102,7 +102,10 @@ class TestSymbolSystemLibrary:
             assert pin.name, f"Unnamed pin in {sym_path.name}"
             # xschem uses "in", "out", "inout" conventionally,
             # but probes use non-standard directions like "xxx"
-            assert isinstance(pin.direction, str) and pin.direction, (
+            assert isinstance(pin.direction, str), (
+                f"Non-str direction for pin '{pin.name}' in {sym_path.name}"
+            )
+            assert pin.direction, (
                 f"Empty direction for pin '{pin.name}' in {sym_path.name}"
             )
 

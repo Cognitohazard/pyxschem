@@ -1,0 +1,16 @@
+# pyxschem guarantees byte-identical round-trips of .sch/.sym files, so line
+# endings must be deterministic at the git layer for every contributor —
+# regardless of OS or core.autocrlf. Without this, a Windows checkout or a
+# GitHub web edit can introduce CRLF and break the round-trip fixtures.
+
+* text=auto eol=lf
+
+# xschem schematic / symbol files are always LF.
+*.sch text eol=lf
+*.sym text eol=lf
+
+# Never normalize binary assets.
+*.png  binary
+*.whl  binary
+*.tar.gz binary
+*.gz   binary

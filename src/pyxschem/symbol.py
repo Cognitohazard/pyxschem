@@ -67,10 +67,10 @@ class Symbol(_ElementContainerMixin):
     Usage::
 
         sym = Symbol.load("devices/res.sym")
-        sym.pins        # [Pin(name="P", direction="inout", ...), ...]
-        sym.type        # "resistor"
-        sym.format      # "@name @pinlist @value m=@m"
-        sym.template    # {"name": "R1", "value": "1k", ...}
+        sym.pins  # [Pin(name="P", direction="inout", ...), ...]
+        sym.type  # "resistor"
+        sym.format  # "@name @pinlist @value m=@m"
+        sym.template  # {"name": "R1", "value": "1k", ...}
     """
 
     def _make_default_header(self, version: str, file_version: str) -> Header:

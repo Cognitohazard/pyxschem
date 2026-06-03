@@ -1,5 +1,10 @@
 # pyxschem
 
+[![CI](https://github.com/Cognitohazard/pyxschem/actions/workflows/ci.yml/badge.svg)](https://github.com/Cognitohazard/pyxschem/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/pyxschem.svg)](https://pypi.org/project/pyxschem/)
+[![Python versions](https://img.shields.io/pypi/pyversions/pyxschem.svg)](https://pypi.org/project/pyxschem/)
+[![License: GPLv3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
+
 > **WIP** — This project is under active development. APIs may change without notice. Not yet recommended for production use.
 
 Python library for reading, editing, and generating [xschem](https://xschem.sourceforge.io/) schematic (`.sch`) and symbol (`.sym`) files. Pure Python, zero runtime dependencies, round-trip faithful.
@@ -301,11 +306,24 @@ top-level Tcl errors otherwise.
 
 ## Development
 
+All commands go through `uv run` (bare `python` / `ruff` are not on `PATH`):
+
 ```bash
-uv sync --extra dev
-uv run pytest
-uv run ruff check src/
+uv sync --extra dev                   # pytest, pytest-cov, ruff, pyright, hypothesis
+uv run pytest -m "not integration"    # run the suite with coverage
+uv run ruff check src/ tests/         # lint
+uv run ruff format src/ tests/        # format
+uv run pyright src/                   # type-check
 ```
+
+Or use the `Makefile`: `make check` runs lint, format-check, type-check, and
+tests — the same gate CI enforces. See [CHANGELOG.md](CHANGELOG.md) for notable
+changes and [SECURITY.md](SECURITY.md) to report a vulnerability.
+
+Integration tests need a system `xschem` binary and are skipped by default; run
+them with `uv run pytest -m integration`. The `workspace/` directory is
+gitignored local scratch for end-to-end exercises against real xschem/ngspice —
+it is not part of the package.
 
 ## License
 

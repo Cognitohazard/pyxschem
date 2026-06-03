@@ -87,7 +87,7 @@ class XschemCLI:
         schematic: str | Path,
         output_dir: str | Path | None = None,
         output_name: str | None = None,
-        format: str = "spice",
+        format: str = "spice",  # noqa: A002  (mirrors xschem's --format option)
         env: dict[str, str] | None = None,
         cwd: str | Path | None = None,
         rcfile: str | Path | None = None,
@@ -188,7 +188,7 @@ class XschemCLI:
         schematic: str | Path,
         *,
         output_dir: str | Path | None = None,
-        format: str = "spice",
+        format: str = "spice",  # noqa: A002  (mirrors xschem's --format option)
         env: dict[str, str] | None = None,
         cwd: str | Path | None = None,
         rcfile: str | Path | None = None,
@@ -234,7 +234,7 @@ class XschemCLI:
                 s.run_tcl("puts [xschem get instances]")
                 s.run_tcl("xschem get current_name")
 
-            print(s.stdout)   # combined output of both commands
+            print(s.stdout)  # combined output of both commands
 
         ``schematic`` is loaded once before the buffered commands run.
         Each queued command is wrapped in ``catch`` so a Tcl-level

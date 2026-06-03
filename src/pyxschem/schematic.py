@@ -150,8 +150,8 @@ class Schematic(_ElementContainerMixin):
     def set_subcircuit_metadata(
         self,
         *,
-        type: str = "subcircuit",
-        format: str | None = None,
+        type: str = "subcircuit",  # noqa: A002  (mirrors xschem's K-block field)
+        format: str | None = None,  # noqa: A002  (mirrors xschem's K-block field)
         template: str | None = None,
         **extra: str,
     ) -> None:

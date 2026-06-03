@@ -37,5 +37,19 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --extra dev --locked
+      - run: uv lock --check  # fail if uv.lock drifted from pyproject.toml
       - run: uv run ruff check src/ tests/
       - run: uv run ruff format --check src/ tests/
+      - run: uv run pyright src/
+      - name: Audit dependencies for known vulnerabilities
+        run: uv run --with pip-audit pip-audit
+        continue-on-error: true  # advisory: a fix-less advisory shouldn't block PRs
+
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uvx pre-commit run --all-files --show-diff-on-failure
