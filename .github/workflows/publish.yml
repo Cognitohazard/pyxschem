@@ -22,11 +22,14 @@ jobs:
       # xschem drives the CLI tests (run headless via `-x`); without it
       # tests/test_cli.py skips and cli.py coverage falls below the gate.
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xschem
-      - run: uv sync --extra dev --locked
-      - run: uv run ruff check src/ tests/
-      - run: uv run ruff format --check src/ tests/
-      - run: uv run pyright src/
-      - run: uv run pytest -m "not integration"
+      - run: uv sync --extra dev --python 3.12 --locked
+      # --no-sync: reuse the venv synced above instead of letting `uv run`
+      # recreate it against a different default interpreter (which drops the
+      # dev extra). See the matching note in ci.yml.
+      - run: uv run --no-sync ruff check src/ tests/
+      - run: uv run --no-sync ruff format --check src/ tests/
+      - run: uv run --no-sync pyright src/
+      - run: uv run --no-sync pytest -m "not integration"
       - run: uv build
       - name: Smoke-test the built wheel imports and ships py.typed
         run: |

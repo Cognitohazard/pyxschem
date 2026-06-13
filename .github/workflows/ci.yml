@@ -34,7 +34,10 @@ jobs:
       # tests/test_cli.py skips and cli.py coverage falls below the gate.
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xschem
       - run: uv sync --extra dev --python ${{ matrix.python-version }} --locked
-      - run: uv run pytest -m "not integration" --cov=pyxschem --cov-report=term-missing
+      # --no-sync: reuse the venv built above. Without it, `uv run` targets
+      # uv's default interpreter (3.10), sees a mismatch with the matrix
+      # venv, and recreates it WITHOUT the dev extra — wiping pytest.
+      - run: uv run --no-sync pytest -m "not integration" --cov=pyxschem --cov-report=term-missing
 
   lint:
     runs-on: ubuntu-latest
