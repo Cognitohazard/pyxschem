@@ -17,7 +17,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-suffix: publish  # isolate from the CI workflow's caches
       - run: uv python install 3.12
       # xschem drives the CLI tests (run headless via `-x`); without it
       # tests/test_cli.py skips and cli.py coverage falls below the gate.

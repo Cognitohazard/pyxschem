@@ -25,10 +25,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          # Isolate the cache per Python version: a single shared key let a
-          # .venv built for one version be restored into another, leaving
-          # pytest uninstalled and `uv run pytest` failing to spawn.
-          cache-suffix: ${{ matrix.python-version }}
       - run: uv python install ${{ matrix.python-version }}
       # xschem drives the CLI tests (run headless via `-x`); without it
       # tests/test_cli.py skips and cli.py coverage falls below the gate.
@@ -46,7 +42,6 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-suffix: lint  # isolate from the test matrix's caches
       - run: uv sync --extra dev --locked
       - run: uv lock --check  # fail if uv.lock drifted from pyproject.toml
       - run: uv run ruff check src/ tests/
@@ -63,5 +58,4 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-suffix: pre-commit  # isolate from the test matrix's caches
       - run: uvx pre-commit run --all-files --show-diff-on-failure
