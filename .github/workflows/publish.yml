@@ -18,6 +18,9 @@ jobs:
         with:
           enable-cache: true
       - run: uv python install 3.12
+      # xschem drives the CLI tests (run headless via `-x`); without it
+      # tests/test_cli.py skips and cli.py coverage falls below the gate.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xschem
       - run: uv sync --extra dev --locked
       - run: uv run ruff check src/ tests/
       - run: uv run ruff format --check src/ tests/
